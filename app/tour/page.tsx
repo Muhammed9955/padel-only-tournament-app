@@ -1,5 +1,5 @@
 "use client";
-// pages/index.tsx
+
 import { useState, useEffect } from "react";
 
 interface Player {
@@ -36,18 +36,27 @@ export default function PadelTournament() {
     "setup"
   );
   const [titleError, setTitleError] = useState<string>("");
+  const [courtCount, setCourtCount] = useState<number>(4);
+  const [groups, setGroups] = useState<Player[][]>([]);
 
   // Load data from localStorage on component mount
   useEffect(() => {
     const savedData = localStorage.getItem("padelTournament");
     if (savedData) {
-      const data = JSON.parse(savedData);
-      setTournamentName(data.tournamentName || "");
-      setPlayers(data.players || []);
-      setRounds(data.rounds || []);
-      setCurrentRound(data.currentRound || 0);
-      if (data.players.length > 0) {
-        setActiveTab("games");
+      try {
+        const data = JSON.parse(savedData);
+        setTournamentName(data.tournamentName || "");
+        setPlayers(data.players || []);
+        setRounds(data.rounds || []);
+        setCurrentRound(data.currentRound || 0);
+        setCourtCount(data.courtCount || 4);
+        setGroups(data.groups || []);
+        if (data.players && data.players.length > 0) {
+          setActiveTab("games");
+        }
+      } catch (error) {
+        console.error("Error loading saved data:", error);
+        localStorage.removeItem("padelTournament");
       }
     }
   }, []);
@@ -59,97 +68,112 @@ export default function PadelTournament() {
       players,
       rounds,
       currentRound,
+      courtCount,
+      groups,
     };
     localStorage.setItem("padelTournament", JSON.stringify(data));
-  }, [tournamentName, players, rounds, currentRound]);
+  }, [tournamentName, players, rounds, currentRound, courtCount, groups]);
 
-  const addPlayers = () => {
-    // Validate tournament name
-    if (!tournamentName.trim()) {
-      setTitleError("Tournament name is required");
-      return;
-    }
-    setTitleError("");
-
-    const names = playerNames.split("\n").filter((name) => name.trim() !== "");
-    if (names.length < 8 || names.length > 24) {
-      alert("Please enter between 8 and 24 players");
-      return;
-    }
-
-    const newPlayers: Player[] = names.map((name, index) => ({
-      id: index + 1,
-      name: name.trim(),
-      points: 0,
-    }));
-
-    setPlayers(newPlayers);
-    generateFirstRound(newPlayers);
-    setActiveTab("games");
+  const getMinCourts = () => {
+    return 1;
   };
 
-  const generateFirstRound = (playersList: Player[]) => {
-    // Simple shuffle function
-    const shuffled = [...playersList].sort(() => 0.5 - Math.random());
-    const numPlayers = playersList.length;
+  const getMaxCourts = () => {
+    return Math.max(1, Math.floor(players.length / 4));
+  };
 
-    // Calculate number of courts (n/4, minimum 2, maximum 4)
-    const numCourts = Math.min(4, Math.max(2, Math.floor(numPlayers / 4)));
+  const getCurrentRoundGames = (): Game[] => {
+    if (rounds.length === 0) return [];
+    const round = rounds.find((r) => r.id === currentRound);
+    return round ? round.games : [];
+  };
+
+  const generateRoundRobinRound = (
+    playersList: Player[],
+    roundNumber: number
+  ): Game[] => {
+    // Shuffle players for random pairing
+    const shuffledPlayers = [...playersList].sort(() => Math.random() - 0.5);
+    
+    // Create teams
+    const teams: Team[] = [];
+    for (let i = 0; i < shuffledPlayers.length; i += 2) {
+      if (i + 1 < shuffledPlayers.length) {
+        teams.push({
+          id: teams.length + 1,
+          players: [shuffledPlayers[i], shuffledPlayers[i + 1]],
+        });
+      }
+    }
+    
+    // Create games
     const games: Game[] = [];
-
-    // Distribute players across courts
-    const playersPerCourt = Math.floor(numPlayers / numCourts);
-    const remainder = numPlayers % numCourts;
-
-    let playerIndex = 0;
-    for (let courtNum = 1; courtNum <= numCourts; courtNum++) {
-      // Calculate how many players to assign to this court
-      let courtPlayerCount = playersPerCourt;
-      if (courtNum <= remainder) {
-        courtPlayerCount++;
-      }
-
-      // Ensure we have an even number of players per court
-      if (courtPlayerCount % 2 !== 0) {
-        courtPlayerCount--;
-      }
-
-      // Get players for this court
-      const courtPlayers = shuffled.slice(
-        playerIndex,
-        playerIndex + courtPlayerCount
-      );
-      playerIndex += courtPlayerCount;
-
-      // Create games for this court (each game requires 4 players)
-      const numGames = Math.floor(courtPlayers.length / 4);
-
-      for (let gameNum = 0; gameNum < numGames; gameNum++) {
-        const gameStartIdx = gameNum * 4;
-        const team1: Team = {
-          id: courtNum * 10 + gameNum * 2 + 1,
-          players: [courtPlayers[gameStartIdx], courtPlayers[gameStartIdx + 1]],
-        };
-        const team2: Team = {
-          id: courtNum * 10 + gameNum * 2 + 2,
-          players: [
-            courtPlayers[gameStartIdx + 2],
-            courtPlayers[gameStartIdx + 3],
-          ],
-        };
-
+    const maxCourts = Math.min(courtCount, Math.floor(teams.length / 2));
+    
+    for (let i = 0; i < teams.length; i += 2) {
+      if (i + 1 < teams.length) {
         games.push({
-          id: courtNum * 100 + gameNum,
-          court: courtNum,
-          team1,
-          team2,
+          id: roundNumber * 100 + i,
+          court: (games.length % maxCourts) + 1,
+          team1: teams[i],
+          team2: teams[i + 1],
+          score: null,
+        });
+      }
+    }
+    
+    return games;
+  };
+
+  const generateGroupBasedRound = (
+    roundNumber: number,
+    groups: Player[][]
+  ): Game[] => {
+    const groupIndex = (roundNumber - 1) % 3;
+    let groupIndices: [number, number];
+
+    if (groupIndex === 0) {
+      groupIndices = [0, 1]; // Groups A and B
+    } else if (groupIndex === 1) {
+      groupIndices = [0, 2]; // Groups A and C
+    } else {
+      groupIndices = [1, 2]; // Groups B and C
+    }
+
+    const playersInRound = [
+      ...groups[groupIndices[0]],
+      ...groups[groupIndices[1]],
+    ];
+
+    // Shuffle players for random pairing
+    const shuffledPlayers = [...playersInRound].sort(() => Math.random() - 0.5);
+
+    // Create teams from player pairs
+    const teams: Team[] = [];
+    for (let i = 0; i < shuffledPlayers.length; i += 2) {
+      if (i + 1 < shuffledPlayers.length) {
+        teams.push({
+          id: teams.length + 1,
+          players: [shuffledPlayers[i], shuffledPlayers[i + 1]],
+        });
+      }
+    }
+
+    // Create games from team pairs
+    const games: Game[] = [];
+    for (let i = 0; i < teams.length; i += 2) {
+      if (i + 1 < teams.length) {
+        games.push({
+          id: roundNumber * 100 + i,
+          court: (games.length % courtCount) + 1,
+          team1: teams[i],
+          team2: teams[i + 1],
           score: null,
         });
       }
     }
 
-    setRounds([{ id: 1, games }]);
-    setCurrentRound(1);
+    return games;
   };
 
   const updateScore = (
@@ -157,137 +181,67 @@ export default function PadelTournament() {
     gameId: number,
     score: [number, number]
   ) => {
-    // Validate score (must be 4-0, 3-1, or 2-2)
-    const validScores = [
-      [4, 0],
-      [0, 4],
-      [3, 1],
-      [1, 3],
-      [2, 2],
-    ];
-
-    const isValid = validScores.some(
-      ([a, b]) => a === score[0] && b === score[1]
-    );
-
-    if (!isValid) {
-      alert("Invalid score. Must be 4-0, 3-1, or 2-2");
-      return;
-    }
-
-    const updatedRounds = rounds.map((round) => {
-      if (round.id === roundId) {
-        const updatedGames = round.games.map((game) => {
-          if (game.id === gameId) {
-            return { ...game, score };
-          }
-          return game;
-        });
-        return { ...round, games: updatedGames };
-      }
-      return round;
-    });
-
-    setRounds(updatedRounds);
-    updatePlayerPoints(updatedRounds);
-  };
-
-  const updatePlayerPoints = (updatedRounds: Round[]) => {
-    const playerPoints: { [key: number]: number } = {};
-    players.forEach((player) => {
-      playerPoints[player.id] = 0;
-    });
-
-    updatedRounds.forEach((round) => {
-      round.games.forEach((game) => {
-        if (game.score) {
-          // Team 1 players get points equal to their score
-          playerPoints[game.team1.players[0].id] += game.score[0];
-          playerPoints[game.team1.players[1].id] += game.score[0];
-
-          // Team 2 players get points equal to their score
-          playerPoints[game.team2.players[0].id] += game.score[1];
-          playerPoints[game.team2.players[1].id] += game.score[1];
+    // Update the game score
+    setRounds((prevRounds) => {
+      return prevRounds.map((round) => {
+        if (round.id === roundId) {
+          const updatedGames = round.games.map((game) => {
+            if (game.id === gameId) {
+              // Update player points based on the score
+              const [score1, score2] = score;
+              const updatedTeam1Players = game.team1.players.map((player) => {
+                const pointsToAdd = score1 > score2 ? 2 : score1 === score2 ? 1 : 0;
+                return {
+                  ...player,
+                  points: player.points + pointsToAdd,
+                };
+              });
+              
+              const updatedTeam2Players = game.team2.players.map((player) => {
+                const pointsToAdd = score2 > score1 ? 2 : score1 === score2 ? 1 : 0;
+                return {
+                  ...player,
+                  points: player.points + pointsToAdd,
+                };
+              });
+              
+              // Update the players state
+              setPlayers((prevPlayers) => {
+                return prevPlayers.map((player) => {
+                  const team1Player = updatedTeam1Players.find(p => p.id === player.id);
+                  if (team1Player) return team1Player;
+                  
+                  const team2Player = updatedTeam2Players.find(p => p.id === player.id);
+                  if (team2Player) return team2Player;
+                  
+                  return player;
+                });
+              });
+              
+              return {
+                ...game,
+                score,
+                team1: {
+                  ...game.team1,
+                  players: updatedTeam1Players as [Player, Player],
+                },
+                team2: {
+                  ...game.team2,
+                  players: updatedTeam2Players as [Player, Player],
+                },
+              };
+            }
+            return game;
+          });
+          
+          return {
+            ...round,
+            games: updatedGames,
+          };
         }
+        return round;
       });
     });
-
-    const updatedPlayers = players.map((player) => ({
-      ...player,
-      points: playerPoints[player.id],
-    }));
-
-    setPlayers(updatedPlayers);
-  };
-
-  const generateNextRound = () => {
-    // Simple rotation algorithm
-    const nextRoundId = rounds.length + 1;
-
-    // Rotate players to create new teams
-    const rotatedPlayers = [...players];
-    const first = rotatedPlayers.shift();
-    if (first) rotatedPlayers.push(first);
-
-    const numPlayers = players.length;
-
-    // Calculate number of courts (n/4, minimum 2, maximum 4)
-    const numCourts = Math.min(4, Math.max(2, Math.floor(numPlayers / 4)));
-    const games: Game[] = [];
-
-    // Distribute players across courts
-    const playersPerCourt = Math.floor(numPlayers / numCourts);
-    const remainder = numPlayers % numCourts;
-
-    let playerIndex = 0;
-    for (let courtNum = 1; courtNum <= numCourts; courtNum++) {
-      // Calculate how many players to assign to this court
-      let courtPlayerCount = playersPerCourt;
-      if (courtNum <= remainder) {
-        courtPlayerCount++;
-      }
-
-      // Ensure we have an even number of players per court
-      if (courtPlayerCount % 2 !== 0) {
-        courtPlayerCount--;
-      }
-
-      // Get players for this court
-      const courtPlayers = rotatedPlayers.slice(
-        playerIndex,
-        playerIndex + courtPlayerCount
-      );
-      playerIndex += courtPlayerCount;
-
-      // Create games for this court (each game requires 4 players)
-      const numGames = Math.floor(courtPlayers.length / 4);
-
-      for (let gameNum = 0; gameNum < numGames; gameNum++) {
-        const gameStartIdx = gameNum * 4;
-        const team1: Team = {
-          id: courtNum * 10 + gameNum * 2 + 1 + nextRoundId * 100,
-          players: [courtPlayers[gameStartIdx], courtPlayers[gameStartIdx + 1]],
-        };
-        const team2: Team = {
-          id: courtNum * 10 + gameNum * 2 + 2 + nextRoundId * 100,
-          players: [
-            courtPlayers[gameStartIdx + 2],
-            courtPlayers[gameStartIdx + 3],
-          ],
-        };
-
-        games.push({
-          id: courtNum * 100 + gameNum + nextRoundId * 1000,
-          court: courtNum,
-          team1,
-          team2,
-          score: null,
-        });
-      }
-    }
-
-    setRounds([...rounds, { id: nextRoundId, games }]);
-    setCurrentRound(nextRoundId);
   };
 
   const goToPreviousRound = () => {
@@ -303,8 +257,79 @@ export default function PadelTournament() {
     setRounds([]);
     setCurrentRound(0);
     setActiveTab("setup");
-    setTitleError("");
+    setCourtCount(4);
+    setGroups([]);
     localStorage.removeItem("padelTournament");
+  };
+
+  const generateFirstRound = (playersList: Player[]) => {
+    const games = generateRoundRobinRound(playersList, 1);
+    setRounds([{ id: 1, games }]);
+    setCurrentRound(1);
+  };
+
+  const generateFirstRoundWithGroups = (groups: Player[][]) => {
+    const games = generateGroupBasedRound(1, groups);
+    setRounds([{ id: 1, games }]);
+    setCurrentRound(1);
+  };
+
+  const addPlayers = () => {
+    if (!tournamentName.trim()) {
+      setTitleError("Tournament name is required");
+      return;
+    }
+    setTitleError("");
+
+    const names = playerNames.split("\n").filter((name) => name.trim() !== "");
+    if (names.length < 4 || names.length > 24) {
+      alert("Please enter between 4 and 24 players");
+      return;
+    }
+
+    const newPlayers: Player[] = names.map((name, index) => ({
+      id: index + 1,
+      name: name.trim(),
+      points: 0,
+    }));
+
+    setPlayers(newPlayers);
+
+    if (newPlayers.length === 24) {
+      setCourtCount(4);
+      // Create three random groups of 8 players
+      const shuffledPlayers = [...newPlayers].sort(() => Math.random() - 0.5);
+      const groupSize = 8;
+      const newGroups = [
+        shuffledPlayers.slice(0, groupSize),
+        shuffledPlayers.slice(groupSize, groupSize * 2),
+        shuffledPlayers.slice(groupSize * 2),
+      ];
+      setGroups(newGroups);
+      generateFirstRoundWithGroups(newGroups);
+    } else {
+      generateFirstRound(newPlayers);
+    }
+    setActiveTab("games");
+  };
+
+  const generateNextRound = () => {
+    const nextRoundId = currentRound + 1;
+    const existingRound = rounds.find((round) => round.id === nextRoundId);
+    if (existingRound) {
+      setCurrentRound(nextRoundId);
+      return;
+    }
+
+    let newGames: Game[];
+    if (players.length === 24) {
+      newGames = generateGroupBasedRound(nextRoundId, groups);
+    } else {
+      newGames = generateRoundRobinRound(players, nextRoundId);
+    }
+
+    setRounds([...rounds, { id: nextRoundId, games: newGames }]);
+    setCurrentRound(nextRoundId);
   };
 
   return (
@@ -336,7 +361,7 @@ export default function PadelTournament() {
               activeTab === "games"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
-            }`}
+            } ${players.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
             onClick={() => players.length > 0 && setActiveTab("games")}
             disabled={players.length === 0}
           >
@@ -347,7 +372,7 @@ export default function PadelTournament() {
               activeTab === "standings"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
-            }`}
+            } ${players.length === 0 ? "opacity-50 cursor-not-allowed" : ""}`}
             onClick={() => players.length > 0 && setActiveTab("standings")}
             disabled={players.length === 0}
           >
@@ -383,13 +408,13 @@ export default function PadelTournament() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Player Names (8-24 players, one per line)
+                  Player Names (4-24 players, one per line)
                 </label>
                 <textarea
                   value={playerNames}
                   onChange={(e) => setPlayerNames(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
-                  placeholder="Enter 8-24 player names, one per line"
+                  placeholder="Enter 4-24 player names, one per line"
                 />
                 <p className="text-sm text-gray-500 mt-1">
                   {
@@ -397,19 +422,36 @@ export default function PadelTournament() {
                       .length
                   }{" "}
                   players entered
-                  {playerNames.split("\n").filter((name) => name.trim() !== "")
-                    .length > 0 &&
-                    ` (${Math.min(
-                      4,
-                      Math.max(
-                        2,
-                        Math.floor(
-                          playerNames
-                            .split("\n")
-                            .filter((name) => name.trim() !== "").length / 4
-                        )
-                      )
-                    )} courts will be used)`}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Courts
+                </label>
+                <select
+                  value={courtCount}
+                  onChange={(e) => setCourtCount(parseInt(e.target.value))}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  disabled={players.length === 24}
+                >
+                  {Array.from(
+                    { length: getMaxCourts() - getMinCourts() + 1 },
+                    (_, i) => {
+                      const courtNum = getMinCourts() + i;
+                      return (
+                        <option key={courtNum} value={courtNum}>
+                          {courtNum} court{courtNum > 1 ? "s" : ""}
+                        </option>
+                      );
+                    }
+                  )}
+                </select>
+                <p className="text-sm text-gray-500 mt-1">
+                  {players.length === 24 
+                    ? "Court count is fixed to 4 for 24 players" 
+                    : `Minimum: ${getMinCourts()} court${getMinCourts() > 1 ? "s" : ""}, Maximum: ${getMaxCourts()} court${getMaxCourts() > 1 ? "s" : ""}`
+                  }
                 </p>
               </div>
 
@@ -439,7 +481,8 @@ export default function PadelTournament() {
                   )}
                   <button
                     onClick={generateNextRound}
-                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    disabled={getCurrentRoundGames().some(game => !game.score)}
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     Next Round
                   </button>
@@ -452,8 +495,7 @@ export default function PadelTournament() {
                 </div>
               </div>
 
-              {rounds.find((round) => round.id === currentRound)?.games
-                .length === 0 ? (
+              {getCurrentRoundGames().length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
                   <p className="text-gray-500">
                     No games scheduled for this round.
@@ -464,113 +506,123 @@ export default function PadelTournament() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {rounds
-                    .find((round) => round.id === currentRound)
-                    ?.games.map((game) => (
-                      <div
-                        key={game.id}
-                        className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-gray-800">
-                            Court {game.court}
-                          </h3>
+                  {getCurrentRoundGames().map((game) => (
+                    <div
+                      key={game.id}
+                      className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800">
+                          Court {game.court}
+                        </h3>
+                        {game.score && (
+                          <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
+                            Completed
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="font-medium text-gray-700">
+                            {game.team1.players[0].name} &{" "}
+                            {game.team1.players[1].name}
+                          </span>
                           {game.score && (
-                            <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
-                              Completed
+                            <span className="text-lg font-bold text-gray-900">
+                              {game.score[0]}
                             </span>
                           )}
                         </div>
 
-                        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium text-gray-700">
-                              {game.team1.players[0].name} /{" "}
-                              {game.team1.players[1].name}
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-700">
+                            {game.team2.players[0].name} &{" "}
+                            {game.team2.players[1].name}
+                          </span>
+                          {game.score && (
+                            <span className="text-lg font-bold text-gray-900">
+                              {game.score[1]}
                             </span>
-                            {game.score && (
-                              <span className="text-lg font-bold text-gray-900">
-                                {game.score[0]}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex justify-between items-center">
-                            <span className="font-medium text-gray-700">
-                              {game.team2.players[0].name} /{" "}
-                              {game.team2.players[1].name}
-                            </span>
-                            {game.score && (
-                              <span className="text-lg font-bold text-gray-900">
-                                {game.score[1]}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="text-center text-xs text-gray-500 mt-3">
-                            VS
-                          </div>
+                          )}
                         </div>
 
-                        {!game.score && (
-                          <div className="bg-gray-100 p-4 rounded-lg">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="font-medium text-gray-700">
-                                Set Score:
-                              </span>
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="4"
-                                  placeholder="0"
-                                  className="w-16 p-2 border border-gray-300 rounded text-center"
-                                  id={`team1-score-${game.id}`}
-                                />
-                                <span className="font-bold text-gray-700">
-                                  -
-                                </span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="4"
-                                  placeholder="0"
-                                  className="w-16 p-2 border border-gray-300 rounded text-center"
-                                  id={`team2-score-${game.id}`}
-                                />
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => {
-                                const team1Input = document.getElementById(
-                                  `team1-score-${game.id}`
-                                ) as HTMLInputElement;
-                                const team2Input = document.getElementById(
-                                  `team2-score-${game.id}`
-                                ) as HTMLInputElement;
-
-                                const team1Score = parseInt(team1Input.value);
-                                const team2Score = parseInt(team2Input.value);
-
-                                if (isNaN(team1Score) || isNaN(team2Score)) {
-                                  alert("Please enter valid scores");
-                                  return;
-                                }
-
-                                updateScore(currentRound, game.id, [
-                                  team1Score,
-                                  team2Score,
-                                ]);
-                              }}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
-                            >
-                              Save Score
-                            </button>
-                          </div>
-                        )}
+                        <div className="text-center text-xs text-gray-500 mt-3">
+                          VS
+                        </div>
                       </div>
-                    ))}
+
+                      {!game.score && (
+                        <div className="bg-gray-100 p-4 rounded-lg">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="font-medium text-gray-700">
+                              Set Score:
+                            </span>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="6"
+                                placeholder="0"
+                                className="w-16 p-2 border border-gray-300 rounded text-center"
+                                id={`team1-score-${game.id}`}
+                              />
+                              <span className="font-bold text-gray-700">-</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max="6"
+                                placeholder="0"
+                                className="w-16 p-2 border border-gray-300 rounded text-center"
+                                id={`team2-score-${game.id}`}
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              const team1Input = document.getElementById(
+                                `team1-score-${game.id}`
+                              ) as HTMLInputElement;
+                              const team2Input = document.getElementById(
+                                `team2-score-${game.id}`
+                              ) as HTMLInputElement;
+
+                              const team1Score = parseInt(team1Input.value);
+                              const team2Score = parseInt(team2Input.value);
+
+                              if (isNaN(team1Score) || isNaN(team2Score)) {
+                                alert("Please enter valid scores");
+                                return;
+                              }
+
+                              if (team1Score === team2Score) {
+                                alert("Scores cannot be equal");
+                                return;
+                              }
+
+                              if (team1Score > 6 || team2Score > 6) {
+                                alert("Scores cannot exceed 6");
+                                return;
+                              }
+
+                              updateScore(currentRound, game.id, [
+                                team1Score,
+                                team2Score,
+                              ]);
+
+                              // Clear the input fields
+                              team1Input.value = "";
+                              team2Input.value = "";
+                            }}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
+                          >
+                            Save Score
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
