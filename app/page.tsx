@@ -320,13 +320,13 @@ export default function PadelTournament() {
                 <div className="flex space-x-3">
                   <button
                     onClick={generateNextRound}
-                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-xs md:text-lg"
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors  md:text-lg"
                   >
                     Next Round
                   </button>
                   <button
                     onClick={resetTournament}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-xs md:text-lg"
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors  md:text-lg"
                   >
                     Reset Tournament
                   </button>
