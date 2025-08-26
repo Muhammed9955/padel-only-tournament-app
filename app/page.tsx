@@ -424,30 +424,33 @@ export default function PadelTournament() {
 
           {activeTab === "games" && players.length > 0 && (
             <div className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">
+              <div className="flex flex-col md:flex-row justify-between items-center ">
+                <h2 className="text-2xl font-bold text-gray-800 mb-5 md:mb-0">
                   {tournamentName} - Round {currentRound}
                 </h2>
-                <div className="flex space-x-3">
+                <div className="flex  space-x-3">
                   {currentRound > 1 && (
                     <button
                       onClick={goToPreviousRound}
                       className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                     >
-                      Previous Round
+                      Previous
+                      {/* Round */}
                     </button>
                   )}
                   <button
                     onClick={generateNextRound}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
-                    Next Round
+                    Next
+                    {/* Round */}
                   </button>
                   <button
                     onClick={resetTournament}
                     className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
-                    Reset Tournament
+                    Reset
+                    {/* Tournament */}
                   </button>
                 </div>
               </div>
@@ -629,7 +632,8 @@ export default function PadelTournament() {
                           </td>
                           <td className="py-4 px-4">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {player.points} pts
+                              {player.points}
+                              {/* pts */}
                             </span>
                           </td>
                         </tr>
