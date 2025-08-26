@@ -35,6 +35,7 @@ export default function PadelTournament() {
   const [activeTab, setActiveTab] = useState<"setup" | "games" | "standings">(
     "setup"
   );
+  const [titleError, setTitleError] = useState<string>("");
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -63,6 +64,13 @@ export default function PadelTournament() {
   }, [tournamentName, players, rounds, currentRound]);
 
   const addPlayers = () => {
+    // Validate tournament name
+    if (!tournamentName.trim()) {
+      setTitleError("Tournament name is required");
+      return;
+    }
+    setTitleError("");
+
     const names = playerNames.split("\n").filter((name) => name.trim() !== "");
     if (names.length < 8 || names.length > 24) {
       alert("Please enter between 8 and 24 players");
@@ -282,6 +290,12 @@ export default function PadelTournament() {
     setCurrentRound(nextRoundId);
   };
 
+  const goToPreviousRound = () => {
+    if (currentRound > 1) {
+      setCurrentRound(currentRound - 1);
+    }
+  };
+
   const resetTournament = () => {
     setTournamentName("");
     setPlayers([]);
@@ -289,6 +303,7 @@ export default function PadelTournament() {
     setRounds([]);
     setCurrentRound(0);
     setActiveTab("setup");
+    setTitleError("");
     localStorage.removeItem("padelTournament");
   };
 
@@ -345,15 +360,25 @@ export default function PadelTournament() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tournament Name
+                  Tournament Name *
                 </label>
                 <input
                   type="text"
                   value={tournamentName}
-                  onChange={(e) => setTournamentName(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => {
+                    setTournamentName(e.target.value);
+                    if (titleError && e.target.value.trim()) {
+                      setTitleError("");
+                    }
+                  }}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    titleError ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Enter tournament name"
                 />
+                {titleError && (
+                  <p className="text-red-500 text-sm mt-1">{titleError}</p>
+                )}
               </div>
 
               <div>
@@ -404,6 +429,14 @@ export default function PadelTournament() {
                   {tournamentName} - Round {currentRound}
                 </h2>
                 <div className="flex space-x-3">
+                  {currentRound > 1 && (
+                    <button
+                      onClick={goToPreviousRound}
+                      className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    >
+                      Previous Round
+                    </button>
+                  )}
                   <button
                     onClick={generateNextRound}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"

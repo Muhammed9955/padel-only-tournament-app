@@ -35,6 +35,7 @@ export default function PadelTournament() {
   const [activeTab, setActiveTab] = useState<"setup" | "games" | "standings">(
     "setup"
   );
+  const [titleError, setTitleError] = useState<string>("");
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -63,9 +64,16 @@ export default function PadelTournament() {
   }, [tournamentName, players, rounds, currentRound]);
 
   const addPlayers = () => {
+    // Validate tournament name
+    if (!tournamentName.trim()) {
+      setTitleError("Tournament name is required");
+      return;
+    }
+    setTitleError("");
+
     const names = playerNames.split("\n").filter((name) => name.trim() !== "");
-    if (names.length !== 24) {
-      alert("Please enter exactly 24 players");
+    if (names.length < 8 || names.length > 24) {
+      alert("Please enter between 8 and 24 players");
       return;
     }
 
@@ -83,31 +91,61 @@ export default function PadelTournament() {
   const generateFirstRound = (playersList: Player[]) => {
     // Simple shuffle function
     const shuffled = [...playersList].sort(() => 0.5 - Math.random());
+    const numPlayers = playersList.length;
 
+    // Calculate number of courts (n/4, minimum 2, maximum 4)
+    const numCourts = Math.min(4, Math.max(2, Math.floor(numPlayers / 4)));
     const games: Game[] = [];
-    for (let i = 0; i < 4; i++) {
-      const startIdx = i * 6;
-      const team1: Team = {
-        id: i * 2 + 1,
-        players: [shuffled[startIdx], shuffled[startIdx + 1]],
-      };
-      const team2: Team = {
-        id: i * 2 + 2,
-        players: [shuffled[startIdx + 2], shuffled[startIdx + 3]],
-      };
-      const team3: Team = {
-        id: i * 2 + 3,
-        players: [shuffled[startIdx + 4], shuffled[startIdx + 5]],
-      };
 
-      // Create two games per court with the 6 players assigned to that court
-      games.push({
-        id: i * 2 + 1,
-        court: i + 1,
-        team1,
-        team2,
-        score: null,
-      });
+    // Distribute players across courts
+    const playersPerCourt = Math.floor(numPlayers / numCourts);
+    const remainder = numPlayers % numCourts;
+
+    let playerIndex = 0;
+    for (let courtNum = 1; courtNum <= numCourts; courtNum++) {
+      // Calculate how many players to assign to this court
+      let courtPlayerCount = playersPerCourt;
+      if (courtNum <= remainder) {
+        courtPlayerCount++;
+      }
+
+      // Ensure we have an even number of players per court
+      if (courtPlayerCount % 2 !== 0) {
+        courtPlayerCount--;
+      }
+
+      // Get players for this court
+      const courtPlayers = shuffled.slice(
+        playerIndex,
+        playerIndex + courtPlayerCount
+      );
+      playerIndex += courtPlayerCount;
+
+      // Create games for this court (each game requires 4 players)
+      const numGames = Math.floor(courtPlayers.length / 4);
+
+      for (let gameNum = 0; gameNum < numGames; gameNum++) {
+        const gameStartIdx = gameNum * 4;
+        const team1: Team = {
+          id: courtNum * 10 + gameNum * 2 + 1,
+          players: [courtPlayers[gameStartIdx], courtPlayers[gameStartIdx + 1]],
+        };
+        const team2: Team = {
+          id: courtNum * 10 + gameNum * 2 + 2,
+          players: [
+            courtPlayers[gameStartIdx + 2],
+            courtPlayers[gameStartIdx + 3],
+          ],
+        };
+
+        games.push({
+          id: courtNum * 100 + gameNum,
+          court: courtNum,
+          team1,
+          team2,
+          score: null,
+        });
+      }
     }
 
     setRounds([{ id: 1, games }]);
@@ -191,29 +229,71 @@ export default function PadelTournament() {
     const first = rotatedPlayers.shift();
     if (first) rotatedPlayers.push(first);
 
-    const newGames: Game[] = [];
-    for (let i = 0; i < 4; i++) {
-      const startIdx = i * 6;
-      const team1: Team = {
-        id: i * 2 + 1 + (nextRoundId - 1) * 8,
-        players: [rotatedPlayers[startIdx], rotatedPlayers[startIdx + 1]],
-      };
-      const team2: Team = {
-        id: i * 2 + 2 + (nextRoundId - 1) * 8,
-        players: [rotatedPlayers[startIdx + 2], rotatedPlayers[startIdx + 3]],
-      };
+    const numPlayers = players.length;
 
-      newGames.push({
-        id: i + 1 + (nextRoundId - 1) * 4,
-        court: i + 1,
-        team1,
-        team2,
-        score: null,
-      });
+    // Calculate number of courts (n/4, minimum 2, maximum 4)
+    const numCourts = Math.min(4, Math.max(2, Math.floor(numPlayers / 4)));
+    const games: Game[] = [];
+
+    // Distribute players across courts
+    const playersPerCourt = Math.floor(numPlayers / numCourts);
+    const remainder = numPlayers % numCourts;
+
+    let playerIndex = 0;
+    for (let courtNum = 1; courtNum <= numCourts; courtNum++) {
+      // Calculate how many players to assign to this court
+      let courtPlayerCount = playersPerCourt;
+      if (courtNum <= remainder) {
+        courtPlayerCount++;
+      }
+
+      // Ensure we have an even number of players per court
+      if (courtPlayerCount % 2 !== 0) {
+        courtPlayerCount--;
+      }
+
+      // Get players for this court
+      const courtPlayers = rotatedPlayers.slice(
+        playerIndex,
+        playerIndex + courtPlayerCount
+      );
+      playerIndex += courtPlayerCount;
+
+      // Create games for this court (each game requires 4 players)
+      const numGames = Math.floor(courtPlayers.length / 4);
+
+      for (let gameNum = 0; gameNum < numGames; gameNum++) {
+        const gameStartIdx = gameNum * 4;
+        const team1: Team = {
+          id: courtNum * 10 + gameNum * 2 + 1 + nextRoundId * 100,
+          players: [courtPlayers[gameStartIdx], courtPlayers[gameStartIdx + 1]],
+        };
+        const team2: Team = {
+          id: courtNum * 10 + gameNum * 2 + 2 + nextRoundId * 100,
+          players: [
+            courtPlayers[gameStartIdx + 2],
+            courtPlayers[gameStartIdx + 3],
+          ],
+        };
+
+        games.push({
+          id: courtNum * 100 + gameNum + nextRoundId * 1000,
+          court: courtNum,
+          team1,
+          team2,
+          score: null,
+        });
+      }
     }
 
-    setRounds([...rounds, { id: nextRoundId, games: newGames }]);
+    setRounds([...rounds, { id: nextRoundId, games }]);
     setCurrentRound(nextRoundId);
+  };
+
+  const goToPreviousRound = () => {
+    if (currentRound > 1) {
+      setCurrentRound(currentRound - 1);
+    }
   };
 
   const resetTournament = () => {
@@ -223,6 +303,7 @@ export default function PadelTournament() {
     setRounds([]);
     setCurrentRound(0);
     setActiveTab("setup");
+    setTitleError("");
     localStorage.removeItem("padelTournament");
   };
 
@@ -279,27 +360,57 @@ export default function PadelTournament() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tournament Name
+                  Tournament Name *
                 </label>
                 <input
                   type="text"
                   value={tournamentName}
-                  onChange={(e) => setTournamentName(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => {
+                    setTournamentName(e.target.value);
+                    if (titleError && e.target.value.trim()) {
+                      setTitleError("");
+                    }
+                  }}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    titleError ? "border-red-500" : "border-gray-300"
+                  }`}
                   placeholder="Enter tournament name"
                 />
+                {titleError && (
+                  <p className="text-red-500 text-sm mt-1">{titleError}</p>
+                )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Player Names (24 players, one per line)
+                  Player Names (8-24 players, one per line)
                 </label>
                 <textarea
                   value={playerNames}
                   onChange={(e) => setPlayerNames(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
-                  placeholder="Enter 24 player names, one per line"
+                  placeholder="Enter 8-24 player names, one per line"
                 />
+                <p className="text-sm text-gray-500 mt-1">
+                  {
+                    playerNames.split("\n").filter((name) => name.trim() !== "")
+                      .length
+                  }{" "}
+                  players entered
+                  {playerNames.split("\n").filter((name) => name.trim() !== "")
+                    .length > 0 &&
+                    ` (${Math.min(
+                      4,
+                      Math.max(
+                        2,
+                        Math.floor(
+                          playerNames
+                            .split("\n")
+                            .filter((name) => name.trim() !== "").length / 4
+                        )
+                      )
+                    )} courts will be used)`}
+                </p>
               </div>
 
               <button
@@ -313,133 +424,155 @@ export default function PadelTournament() {
 
           {activeTab === "games" && players.length > 0 && (
             <div className="space-y-8">
-              <div className="flex flex-col md:flex-row justify-between items-center">
-                <h2 className="text-md md:text-2xl font-bold text-gray-800 mb-5 md:mb-0">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">
                   {tournamentName} - Round {currentRound}
                 </h2>
                 <div className="flex space-x-3">
+                  {currentRound > 1 && (
+                    <button
+                      onClick={goToPreviousRound}
+                      className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    >
+                      Previous Round
+                    </button>
+                  )}
                   <button
                     onClick={generateNextRound}
-                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors  md:text-lg"
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
                     Next Round
                   </button>
                   <button
                     onClick={resetTournament}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors  md:text-lg"
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
                     Reset Tournament
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {rounds
-                  .find((round) => round.id === currentRound)
-                  ?.games.map((game) => (
-                    <div
-                      key={game.id}
-                      className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">
-                          Court {game.court}
-                        </h3>
-                        {game.score && (
-                          <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
-                            Completed
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="font-medium text-gray-700">
-                            {game.team1.players[0].name} /{" "}
-                            {game.team1.players[1].name}
-                          </span>
+              {rounds.find((round) => round.id === currentRound)?.games
+                .length === 0 ? (
+                <div className="text-center py-8 bg-gray-50 rounded-lg">
+                  <p className="text-gray-500">
+                    No games scheduled for this round.
+                  </p>
+                  <p className="text-gray-500 mt-2">
+                    You need at least 4 players to create a game.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {rounds
+                    .find((round) => round.id === currentRound)
+                    ?.games.map((game) => (
+                      <div
+                        key={game.id}
+                        className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            Court {game.court}
+                          </h3>
                           {game.score && (
-                            <span className="text-lg font-bold text-gray-900">
-                              {game.score[0]}
+                            <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
+                              Completed
                             </span>
                           )}
                         </div>
 
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-gray-700">
-                            {game.team2.players[0].name} /{" "}
-                            {game.team2.players[1].name}
-                          </span>
-                          {game.score && (
-                            <span className="text-lg font-bold text-gray-900">
-                              {game.score[1]}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="text-center text-xs text-gray-500 mt-3">
-                          VS
-                        </div>
-                      </div>
-
-                      {!game.score && (
-                        <div className="bg-gray-100 p-4 rounded-lg">
-                          <div className="flex items-center justify-between mb-3">
+                        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex justify-between items-center mb-3">
                             <span className="font-medium text-gray-700">
-                              Set Score:
+                              {game.team1.players[0].name} /{" "}
+                              {game.team1.players[1].name}
                             </span>
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="4"
-                                placeholder="0"
-                                className="w-16 p-2 border border-gray-300 rounded text-center"
-                                id={`team1-score-${game.id}`}
-                              />
-                              <span className="font-bold text-gray-700">-</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="4"
-                                placeholder="0"
-                                className="w-16 p-2 border border-gray-300 rounded text-center"
-                                id={`team2-score-${game.id}`}
-                              />
-                            </div>
+                            {game.score && (
+                              <span className="text-lg font-bold text-gray-900">
+                                {game.score[0]}
+                              </span>
+                            )}
                           </div>
 
-                          <button
-                            onClick={() => {
-                              const team1Input = document.getElementById(
-                                `team1-score-${game.id}`
-                              ) as HTMLInputElement;
-                              const team2Input = document.getElementById(
-                                `team2-score-${game.id}`
-                              ) as HTMLInputElement;
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-gray-700">
+                              {game.team2.players[0].name} /{" "}
+                              {game.team2.players[1].name}
+                            </span>
+                            {game.score && (
+                              <span className="text-lg font-bold text-gray-900">
+                                {game.score[1]}
+                              </span>
+                            )}
+                          </div>
 
-                              const team1Score = parseInt(team1Input.value);
-                              const team2Score = parseInt(team2Input.value);
-
-                              if (isNaN(team1Score) || isNaN(team2Score)) {
-                                alert("Please enter valid scores");
-                                return;
-                              }
-
-                              updateScore(currentRound, game.id, [
-                                team1Score,
-                                team2Score,
-                              ]);
-                            }}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
-                          >
-                            Save Score
-                          </button>
+                          <div className="text-center text-xs text-gray-500 mt-3">
+                            VS
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
-              </div>
+
+                        {!game.score && (
+                          <div className="bg-gray-100 p-4 rounded-lg">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="font-medium text-gray-700">
+                                Set Score:
+                              </span>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="4"
+                                  placeholder="0"
+                                  className="w-16 p-2 border border-gray-300 rounded text-center"
+                                  id={`team1-score-${game.id}`}
+                                />
+                                <span className="font-bold text-gray-700">
+                                  -
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="4"
+                                  placeholder="0"
+                                  className="w-16 p-2 border border-gray-300 rounded text-center"
+                                  id={`team2-score-${game.id}`}
+                                />
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                const team1Input = document.getElementById(
+                                  `team1-score-${game.id}`
+                                ) as HTMLInputElement;
+                                const team2Input = document.getElementById(
+                                  `team2-score-${game.id}`
+                                ) as HTMLInputElement;
+
+                                const team1Score = parseInt(team1Input.value);
+                                const team2Score = parseInt(team2Input.value);
+
+                                if (isNaN(team1Score) || isNaN(team2Score)) {
+                                  alert("Please enter valid scores");
+                                  return;
+                                }
+
+                                updateScore(currentRound, game.id, [
+                                  team1Score,
+                                  team2Score,
+                                ]);
+                              }}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
+                            >
+                              Save Score
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -494,10 +627,9 @@ export default function PadelTournament() {
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 px-2">
+                          <td className="py-4 px-4">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {player.points}{" "}
-                              <span className="hidden md:block">pts</span>
+                              {player.points} pts
                             </span>
                           </td>
                         </tr>
