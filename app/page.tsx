@@ -496,7 +496,8 @@ export default function PadelTournament() {
                           </td>
                           <td className="py-4 px-2">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {player.points} pts
+                              {player.points}{" "}
+                              <span className="hidden md:block">pts</span>
                             </span>
                           </td>
                         </tr>
