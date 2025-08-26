@@ -94,7 +94,7 @@ export default function PadelTournament() {
   ): Game[] => {
     // Shuffle players for random pairing
     const shuffledPlayers = [...playersList].sort(() => Math.random() - 0.5);
-    
+
     // Create teams
     const teams: Team[] = [];
     for (let i = 0; i < shuffledPlayers.length; i += 2) {
@@ -105,11 +105,11 @@ export default function PadelTournament() {
         });
       }
     }
-    
+
     // Create games
     const games: Game[] = [];
     const maxCourts = Math.min(courtCount, Math.floor(teams.length / 2));
-    
+
     for (let i = 0; i < teams.length; i += 2) {
       if (i + 1 < teams.length) {
         games.push({
@@ -121,7 +121,7 @@ export default function PadelTournament() {
         });
       }
     }
-    
+
     return games;
   };
 
@@ -190,34 +190,40 @@ export default function PadelTournament() {
               // Update player points based on the score
               const [score1, score2] = score;
               const updatedTeam1Players = game.team1.players.map((player) => {
-                const pointsToAdd = score1 > score2 ? 2 : score1 === score2 ? 1 : 0;
+                const pointsToAdd =
+                  score1 > score2 ? 2 : score1 === score2 ? 1 : 0;
                 return {
                   ...player,
                   points: player.points + pointsToAdd,
                 };
               });
-              
+
               const updatedTeam2Players = game.team2.players.map((player) => {
-                const pointsToAdd = score2 > score1 ? 2 : score1 === score2 ? 1 : 0;
+                const pointsToAdd =
+                  score2 > score1 ? 2 : score1 === score2 ? 1 : 0;
                 return {
                   ...player,
                   points: player.points + pointsToAdd,
                 };
               });
-              
+
               // Update the players state
               setPlayers((prevPlayers) => {
                 return prevPlayers.map((player) => {
-                  const team1Player = updatedTeam1Players.find(p => p.id === player.id);
+                  const team1Player = updatedTeam1Players.find(
+                    (p) => p.id === player.id
+                  );
                   if (team1Player) return team1Player;
-                  
-                  const team2Player = updatedTeam2Players.find(p => p.id === player.id);
+
+                  const team2Player = updatedTeam2Players.find(
+                    (p) => p.id === player.id
+                  );
                   if (team2Player) return team2Player;
-                  
+
                   return player;
                 });
               });
-              
+
               return {
                 ...game,
                 score,
@@ -233,7 +239,7 @@ export default function PadelTournament() {
             }
             return game;
           });
-          
+
           return {
             ...round,
             games: updatedGames,
@@ -448,10 +454,13 @@ export default function PadelTournament() {
                   )}
                 </select>
                 <p className="text-sm text-gray-500 mt-1">
-                  {players.length === 24 
-                    ? "Court count is fixed to 4 for 24 players" 
-                    : `Minimum: ${getMinCourts()} court${getMinCourts() > 1 ? "s" : ""}, Maximum: ${getMaxCourts()} court${getMaxCourts() > 1 ? "s" : ""}`
-                  }
+                  {players.length === 24
+                    ? "Court count is fixed to 4 for 24 players"
+                    : `Minimum: ${getMinCourts()} court${
+                        getMinCourts() > 1 ? "s" : ""
+                      }, Maximum: ${getMaxCourts()} court${
+                        getMaxCourts() > 1 ? "s" : ""
+                      }`}
                 </p>
               </div>
 
@@ -466,8 +475,8 @@ export default function PadelTournament() {
 
           {activeTab === "games" && players.length > 0 && (
             <div className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">
+              <div className="flex flex-col md:flex-row justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800 mb-5 md:mb-0">
                   {tournamentName} - Round {currentRound}
                 </h2>
                 <div className="flex space-x-3">
@@ -476,21 +485,26 @@ export default function PadelTournament() {
                       onClick={goToPreviousRound}
                       className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                     >
-                      Previous Round
+                      Previous
+                      {/* Round */}
                     </button>
                   )}
                   <button
                     onClick={generateNextRound}
-                    disabled={getCurrentRoundGames().some(game => !game.score)}
+                    disabled={getCurrentRoundGames().some(
+                      (game) => !game.score
+                    )}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    Next Round
+                    Next
+                    {/* Round */}
                   </button>
                   <button
                     onClick={resetTournament}
                     className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
-                    Reset Tournament
+                    Reset
+                    {/* Tournament */}
                   </button>
                 </div>
               </div>
@@ -681,7 +695,8 @@ export default function PadelTournament() {
                           </td>
                           <td className="py-4 px-4">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {player.points} pts
+                              {player.points}
+                              {/* pts */}
                             </span>
                           </td>
                         </tr>
