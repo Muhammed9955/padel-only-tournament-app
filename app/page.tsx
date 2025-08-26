@@ -313,8 +313,8 @@ export default function PadelTournament() {
 
           {activeTab === "games" && players.length > 0 && (
             <div className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-md md:text-2xl font-bold text-gray-800">
+              <div className="flex flex-col md:flex-row justify-between items-center">
+                <h2 className="text-md md:text-2xl font-bold text-gray-800 mb-5 md:mb-0">
                   {tournamentName} - Round {currentRound}
                 </h2>
                 <div className="flex space-x-3">
