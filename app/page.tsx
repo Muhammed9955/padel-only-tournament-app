@@ -177,6 +177,20 @@ export default function PadelTournament() {
       }
     }
 
+    // // Create games from team pairs
+    // const games: Game[] = [];
+    // for (i = 0; i < teams.length; i += 2) {
+    //   if (i + 1 < teams.length) {
+    //     games.push({
+    //       id: roundNumber * 100 + i,
+    //       court: (games.length % courtCount) + 1,
+    //       team1: teams[i],
+    //       team2: teams[i + 1],
+    //       score: null,
+    //     });
+    //   }
+    // }
+
     return games;
   };
 
@@ -464,13 +478,13 @@ export default function PadelTournament() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-4 px-2 sm:py-8 sm:px-4">
       <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-3xl font-bold text-gray-800">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
             Padel Tournament Manager
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
             Organize and track your padel tournament with ease
           </p>
         </div>
@@ -478,7 +492,7 @@ export default function PadelTournament() {
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-200">
           <button
-            className={`py-4 px-6 font-medium ${
+            className={`py-3 px-4 sm:py-4 sm:px-6 font-medium text-sm sm:text-base ${
               activeTab === "setup"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
@@ -488,7 +502,7 @@ export default function PadelTournament() {
             Tournament Setup
           </button>
           <button
-            className={`py-4 px-6 font-medium ${
+            className={`py-3 px-4 sm:py-4 sm:px-6 font-medium text-sm sm:text-base ${
               activeTab === "games"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
@@ -499,7 +513,7 @@ export default function PadelTournament() {
             Games
           </button>
           <button
-            className={`py-4 px-6 font-medium ${
+            className={`py-3 px-4 sm:py-4 sm:px-6 font-medium text-sm sm:text-base ${
               activeTab === "standings"
                 ? "text-blue-600 border-b-2 border-blue-600"
                 : "text-gray-500 hover:text-gray-700"
@@ -511,9 +525,9 @@ export default function PadelTournament() {
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {activeTab === "setup" && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tournament Name *
@@ -544,7 +558,7 @@ export default function PadelTournament() {
                 <textarea
                   value={playerNames}
                   onChange={(e) => setPlayerNames(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-48"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-32 sm:h-48"
                   placeholder="Enter 4-24 player names, one per line"
                 />
                 <p className="text-sm text-gray-500 mt-1">
@@ -599,16 +613,16 @@ export default function PadelTournament() {
           )}
 
           {activeTab === "games" && players.length > 0 && (
-            <div className="space-y-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800">
+            <div className="space-y-6 sm:space-y-8">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                   {tournamentName} - Round {currentRound}
                 </h2>
-                <div className="flex space-x-3">
+                <div className="flex flex-wrap gap-2">
                   {currentRound > 1 && (
                     <button
                       onClick={goToPreviousRound}
-                      className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                      className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
                     >
                       Previous Round
                     </button>
@@ -618,13 +632,13 @@ export default function PadelTournament() {
                     disabled={getCurrentRoundGames().some(
                       (game) => !game.score
                     )}
-                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
                   >
                     Next Round
                   </button>
                   <button
                     onClick={resetTournament}
-                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                    className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
                   >
                     Reset Tournament
                   </button>
@@ -641,7 +655,7 @@ export default function PadelTournament() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   {getCurrentRoundGames().map((game) => {
                     const currentScores =
                       scoreInputs[game.id] ||
@@ -653,20 +667,20 @@ export default function PadelTournament() {
                     return (
                       <div
                         key={game.id}
-                        className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
+                        className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-5 shadow-sm"
                       >
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-gray-800">
+                        <div className="flex items-center justify-between mb-3 sm:mb-4">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-800">
                             Court {game.court}
                           </h3>
                           {game.score && !isEditing && (
                             <div className="flex items-center space-x-2">
-                              <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
+                              <span className="bg-blue-100 text-blue-800 py-1 px-2 sm:px-3 rounded-full text-xs sm:text-sm font-medium">
                                 Completed
                               </span>
                               <button
                                 onClick={() => startEditingScore(game.id)}
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-full text-sm font-medium"
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-2 sm:px-3 rounded-full text-xs sm:text-sm font-medium"
                               >
                                 Edit Score
                               </button>
@@ -674,40 +688,40 @@ export default function PadelTournament() {
                           )}
                         </div>
 
-                        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
-                          <div className="flex justify-between items-center mb-3">
-                            <span className="font-medium text-gray-700">
+                        <div className="mb-4 p-3 sm:p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex justify-between items-center mb-2 sm:mb-3">
+                            <span className="font-medium text-gray-700 text-sm sm:text-base">
                               {game.team1.players[0].name} &{" "}
                               {game.team1.players[1].name}
                             </span>
                             {game.score && !isEditing && (
-                              <span className="text-lg font-bold text-gray-900">
+                              <span className="text-base sm:text-lg font-bold text-gray-900">
                                 {game.score[0]}
                               </span>
                             )}
                           </div>
 
                           <div className="flex justify-between items-center">
-                            <span className="font-medium text-gray-700">
+                            <span className="font-medium text-gray-700 text-sm sm:text-base">
                               {game.team2.players[0].name} &{" "}
                               {game.team2.players[1].name}
                             </span>
                             {game.score && !isEditing && (
-                              <span className="text-lg font-bold text-gray-900">
+                              <span className="text-base sm:text-lg font-bold text-gray-900">
                                 {game.score[1]}
                               </span>
                             )}
                           </div>
 
-                          <div className="text-center text-xs text-gray-500 mt-3">
+                          <div className="text-center text-xs text-gray-500 mt-2 sm:mt-3">
                             VS
                           </div>
                         </div>
 
                         {(!game.score || isEditing) && (
-                          <div className="bg-gray-100 p-4 rounded-lg">
+                          <div className="bg-gray-100 p-3 sm:p-4 rounded-lg">
                             <div className="flex items-center justify-between mb-3">
-                              <span className="font-medium text-gray-700">
+                              <span className="font-medium text-gray-700 text-sm sm:text-base">
                                 Set Score (0-6):
                               </span>
                               <div className="flex items-center space-x-2">
@@ -716,7 +730,7 @@ export default function PadelTournament() {
                                   min="0"
                                   max="6"
                                   placeholder="0"
-                                  className="w-16 p-2 border border-gray-300 rounded text-center"
+                                  className="w-14 sm:w-16 p-2 border border-gray-300 rounded text-center text-sm sm:text-base"
                                   value={currentScores[0]}
                                   onChange={(e) =>
                                     handleScoreInputChange(
@@ -734,7 +748,7 @@ export default function PadelTournament() {
                                   min="0"
                                   max="6"
                                   placeholder="0"
-                                  className="w-16 p-2 border border-gray-300 rounded text-center"
+                                  className="w-14 sm:w-16 p-2 border border-gray-300 rounded text-center text-sm sm:text-base"
                                   value={currentScores[1]}
                                   onChange={(e) =>
                                     handleScoreInputChange(
@@ -747,7 +761,7 @@ export default function PadelTournament() {
                               </div>
                             </div>
 
-                            <div className="mb-3 text-sm text-gray-600">
+                            <div className="mb-3 text-xs sm:text-sm text-gray-600">
                               <p>
                                 Points are awarded based on games won and
                                 accumulate across all rounds:
@@ -781,7 +795,7 @@ export default function PadelTournament() {
                                     isEditing
                                   );
                                 }}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors text-sm"
                               >
                                 {isEditing ? "Update Score" : "Save Score"}
                               </button>
@@ -789,7 +803,7 @@ export default function PadelTournament() {
                               {isEditing && (
                                 <button
                                   onClick={cancelEditing}
-                                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition-colors"
+                                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition-colors text-sm"
                                 >
                                   Cancel
                                 </button>
@@ -806,77 +820,81 @@ export default function PadelTournament() {
           )}
 
           {activeTab === "standings" && players.length > 0 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800">
+            <div className="space-y-4 sm:space-y-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
                 Player Standings
               </h2>
 
               <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Player
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Games Played
-                      </th>
-                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Points
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {players
-                      .sort((a, b) => b.points - a.points)
-                      .map((player, index) => (
-                        <tr
-                          key={player.id}
-                          className={
-                            index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                          }
-                        >
-                          <td className="py-4 px-4 font-medium text-gray-900">
-                            {index + 1}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center">
-                              <div className="h-10 w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                                <span className="font-medium text-blue-800">
-                                  {player.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
-                                </span>
-                              </div>
-                              <div className="ml-4">
-                                <div className="font-medium text-gray-900">
-                                  {player.name}
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[500px] sm:min-w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="py-3 px-2 sm:px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                          Rank
+                        </th>
+                        <th className="py-3 px-2 sm:px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-24">
+                          Player
+                        </th>
+                        <th className="py-3 px-2  text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-24 ">
+                          Games
+                        </th>
+                        <th className="py-3 px-2 sm:px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap ">
+                          Points
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {players
+                        .sort((a, b) => b.points - a.points)
+                        .map((player, index) => (
+                          <tr
+                            key={player.id}
+                            className={
+                              index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                            }
+                          >
+                            <td className="py-3 px-5 font-medium text-gray-900 whitespace-nowrap w-20">
+                              {index + 1}
+                            </td>
+                            <td className="py-3  whitespace-nowrap">
+                              <div className="flex items-center">
+                                {/* <div className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="font-medium text-blue-800 text-xs sm:text-sm">
+                                    {player.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")}
+                                  </span>
+                                </div> */}
+                                <div className="ml-2 sm:ml-4">
+                                  <div className="font-medium text-gray-900 text-sm sm:text-base">
+                                    {player.name}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-center">
-                            {getGamesPlayed(player.id)}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {player.points} pts
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
+                            </td>
+                            <td className="py-3 px-2 sm:px-4 text-center whitespace-nowrap">
+                              <span className="text-sm sm:text-base">
+                                {getGamesPlayed(player.id)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 sm:px-4 whitespace-nowrap ">
+                              <span className="inline-flex items-center px-2 py-1 sm:px-3 sm:py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-800">
+                                {player.points} pts
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="flex justify-center mt-6">
+              <div className="flex justify-center mt-4 sm:mt-6">
                 <button
                   onClick={() => setActiveTab("games")}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors text-sm sm:text-base"
                 >
                   Back to Games
                 </button>
