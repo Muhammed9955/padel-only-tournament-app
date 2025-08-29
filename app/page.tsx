@@ -38,6 +38,10 @@ export default function PadelTournament() {
   const [titleError, setTitleError] = useState<string>("");
   const [courtCount, setCourtCount] = useState<number>(4);
   const [groups, setGroups] = useState<Player[][]>([]);
+  const [scoreInputs, setScoreInputs] = useState<{
+    [key: number]: [string, string];
+  }>({});
+  const [editingGame, setEditingGame] = useState<number | null>(null);
 
   // Load data from localStorage on component mount
   useEffect(() => {
@@ -179,61 +183,110 @@ export default function PadelTournament() {
   const updateScore = (
     roundId: number,
     gameId: number,
-    score: [number, number]
+    score: [number, number],
+    isEditing: boolean = false
   ) => {
-    // Update the game score
+    const [score1, score2] = score;
+
+    // Validate scores (0-6 range)
+    if (score1 < 0 || score1 > 6 || score2 < 0 || score2 > 6) {
+      alert("Scores must be between 0 and 6");
+      return;
+    }
+
+    if (score1 === score2) {
+      alert("Scores cannot be equal");
+      return;
+    }
+
+    // Determine points based on games won (Padelution style)
+    // Each player gets points equal to the number of games their team won
+    const team1Points = score1;
+    const team2Points = score2;
+
+    // Update the game score and player points
     setRounds((prevRounds) => {
       return prevRounds.map((round) => {
         if (round.id === roundId) {
           const updatedGames = round.games.map((game) => {
             if (game.id === gameId) {
-              // Update player points based on the score
-              const [score1, score2] = score;
-              const updatedTeam1Players = game.team1.players.map((player) => {
-                const pointsToAdd =
-                  score1 > score2 ? 2 : score1 === score2 ? 1 : 0;
-                return {
-                  ...player,
-                  points: player.points + pointsToAdd,
-                };
-              });
+              // If editing, subtract the old points first
+              let updatedPlayers = [...players];
 
-              const updatedTeam2Players = game.team2.players.map((player) => {
-                const pointsToAdd =
-                  score2 > score1 ? 2 : score1 === score2 ? 1 : 0;
-                return {
-                  ...player,
-                  points: player.points + pointsToAdd,
-                };
-              });
+              if (isEditing && game.score) {
+                const [oldScore1, oldScore2] = game.score;
 
-              // Update the players state
-              setPlayers((prevPlayers) => {
-                return prevPlayers.map((player) => {
-                  const team1Player = updatedTeam1Players.find(
-                    (p) => p.id === player.id
-                  );
-                  if (team1Player) return team1Player;
+                // Subtract old points
+                updatedPlayers = updatedPlayers.map((player) => {
+                  // Check if player was in team1
+                  if (game.team1.players.some((p) => p.id === player.id)) {
+                    return {
+                      ...player,
+                      points: player.points - oldScore1,
+                    };
+                  }
 
-                  const team2Player = updatedTeam2Players.find(
-                    (p) => p.id === player.id
-                  );
-                  if (team2Player) return team2Player;
+                  // Check if player was in team2
+                  if (game.team2.players.some((p) => p.id === player.id)) {
+                    return {
+                      ...player,
+                      points: player.points - oldScore2,
+                    };
+                  }
 
                   return player;
                 });
+              }
+
+              // Add new points
+              updatedPlayers = updatedPlayers.map((player) => {
+                // Check if player is in team1
+                if (game.team1.players.some((p) => p.id === player.id)) {
+                  return {
+                    ...player,
+                    points: player.points + team1Points,
+                  };
+                }
+
+                // Check if player is in team2
+                if (game.team2.players.some((p) => p.id === player.id)) {
+                  return {
+                    ...player,
+                    points: player.points + team2Points,
+                  };
+                }
+
+                return player;
               });
+
+              // Update the players state
+              setPlayers(updatedPlayers);
+
+              // Update the team players with the new points
+              const updatedTeam1Players = game.team1.players.map((player) => {
+                const updatedPlayer = updatedPlayers.find(
+                  (p) => p.id === player.id
+                );
+                return updatedPlayer || player;
+              }) as [Player, Player];
+
+              const updatedTeam2Players = game.team2.players.map((player) => {
+                const updatedPlayer = updatedPlayers.find(
+                  (p) => p.id === player.id
+                );
+                return updatedPlayer || player;
+              }) as [Player, Player];
 
               return {
                 ...game,
                 score,
                 team1: {
                   ...game.team1,
-                  players: updatedTeam1Players as [Player, Player],
+                  players: updatedTeam1Players,
                 },
                 team2: {
                   ...game.team2,
-                  players: updatedTeam2Players as [Player, Player],
+                  players: updatedTeam2Players,
                 },
               };
             }
@@ -248,6 +301,15 @@ export default function PadelTournament() {
         return round;
       });
     });
+
+    // Clear the score inputs for this game and exit edit mode
+    setScoreInputs((prev) => {
+      const newInputs = { ...prev };
+      delete newInputs[gameId];
+      return newInputs;
+    });
+
+    setEditingGame(null);
   };
 
   const goToPreviousRound = () => {
@@ -265,6 +327,8 @@ export default function PadelTournament() {
     setActiveTab("setup");
     setCourtCount(4);
     setGroups([]);
+    setScoreInputs({});
+    setEditingGame(null);
     localStorage.removeItem("padelTournament");
   };
 
@@ -336,6 +400,67 @@ export default function PadelTournament() {
 
     setRounds([...rounds, { id: nextRoundId, games: newGames }]);
     setCurrentRound(nextRoundId);
+  };
+
+  const handleScoreInputChange = (
+    gameId: number,
+    teamIndex: number,
+    value: string
+  ) => {
+    // Only allow numbers and empty string
+    if (value !== "" && !/^\d+$/.test(value)) return;
+
+    // Don't allow values greater than 6
+    if (value !== "" && parseInt(value) > 6) return;
+
+    setScoreInputs((prev) => {
+      const currentScores = prev[gameId] || ["", ""];
+      const newScores = [...currentScores] as [string, string];
+      newScores[teamIndex] = value;
+
+      return {
+        ...prev,
+        [gameId]: newScores,
+      };
+    });
+  };
+
+  const startEditingScore = (gameId: number) => {
+    const game = getCurrentRoundGames().find((g) => g.id === gameId);
+    if (game && game.score) {
+      setScoreInputs((prev) => ({
+        ...prev,
+        [gameId]: [String(game.score![0]), String(game.score![1])],
+      }));
+      setEditingGame(gameId);
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingGame(null);
+    setScoreInputs((prev) => {
+      const newInputs = { ...prev };
+      delete newInputs[editingGame!];
+      return newInputs;
+    });
+  };
+
+  // Calculate total games played by a player
+  const getGamesPlayed = (playerId: number) => {
+    let count = 0;
+    rounds.forEach((round) => {
+      round.games.forEach((game) => {
+        if (game.score) {
+          if (
+            game.team1.players.some((p) => p.id === playerId) ||
+            game.team2.players.some((p) => p.id === playerId)
+          ) {
+            count++;
+          }
+        }
+      });
+    });
+    return count;
   };
 
   return (
@@ -475,8 +600,8 @@ export default function PadelTournament() {
 
           {activeTab === "games" && players.length > 0 && (
             <div className="space-y-8">
-              <div className="flex flex-col md:flex-row justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800 mb-5 md:mb-0">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">
                   {tournamentName} - Round {currentRound}
                 </h2>
                 <div className="flex space-x-3">
@@ -485,8 +610,7 @@ export default function PadelTournament() {
                       onClick={goToPreviousRound}
                       className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                     >
-                      Previous
-                      {/* Round */}
+                      Previous Round
                     </button>
                   )}
                   <button
@@ -496,15 +620,13 @@ export default function PadelTournament() {
                     )}
                     className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
-                    Next
-                    {/* Round */}
+                    Next Round
                   </button>
                   <button
                     onClick={resetTournament}
                     className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
                   >
-                    Reset
-                    {/* Tournament */}
+                    Reset Tournament
                   </button>
                 </div>
               </div>
@@ -520,123 +642,164 @@ export default function PadelTournament() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {getCurrentRoundGames().map((game) => (
-                    <div
-                      key={game.id}
-                      className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-800">
-                          Court {game.court}
-                        </h3>
-                        {game.score && (
-                          <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
-                            Completed
-                          </span>
-                        )}
-                      </div>
+                  {getCurrentRoundGames().map((game) => {
+                    const currentScores =
+                      scoreInputs[game.id] ||
+                      (game.score
+                        ? [String(game.score[0]), String(game.score[1])]
+                        : ["", ""]);
+                    const isEditing = editingGame === game.id;
 
-                      <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="font-medium text-gray-700">
-                            {game.team1.players[0].name} &{" "}
-                            {game.team1.players[1].name}
-                          </span>
-                          {game.score && (
-                            <span className="text-lg font-bold text-gray-900">
-                              {game.score[0]}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium text-gray-700">
-                            {game.team2.players[0].name} &{" "}
-                            {game.team2.players[1].name}
-                          </span>
-                          {game.score && (
-                            <span className="text-lg font-bold text-gray-900">
-                              {game.score[1]}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="text-center text-xs text-gray-500 mt-3">
-                          VS
-                        </div>
-                      </div>
-
-                      {!game.score && (
-                        <div className="bg-gray-100 p-4 rounded-lg">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="font-medium text-gray-700">
-                              Set Score:
-                            </span>
+                    return (
+                      <div
+                        key={game.id}
+                        className="bg-gray-50 border border-gray-200 rounded-xl p-5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-800">
+                            Court {game.court}
+                          </h3>
+                          {game.score && !isEditing && (
                             <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="6"
-                                placeholder="0"
-                                className="w-16 p-2 border border-gray-300 rounded text-center"
-                                id={`team1-score-${game.id}`}
-                              />
-                              <span className="font-bold text-gray-700">-</span>
-                              <input
-                                type="number"
-                                min="0"
-                                max="6"
-                                placeholder="0"
-                                className="w-16 p-2 border border-gray-300 rounded text-center"
-                                id={`team2-score-${game.id}`}
-                              />
+                              <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full text-sm font-medium">
+                                Completed
+                              </span>
+                              <button
+                                onClick={() => startEditingScore(game.id)}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded-full text-sm font-medium"
+                              >
+                                Edit Score
+                              </button>
                             </div>
+                          )}
+                        </div>
+
+                        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="font-medium text-gray-700">
+                              {game.team1.players[0].name} &{" "}
+                              {game.team1.players[1].name}
+                            </span>
+                            {game.score && !isEditing && (
+                              <span className="text-lg font-bold text-gray-900">
+                                {game.score[0]}
+                              </span>
+                            )}
                           </div>
 
-                          <button
-                            onClick={() => {
-                              const team1Input = document.getElementById(
-                                `team1-score-${game.id}`
-                              ) as HTMLInputElement;
-                              const team2Input = document.getElementById(
-                                `team2-score-${game.id}`
-                              ) as HTMLInputElement;
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium text-gray-700">
+                              {game.team2.players[0].name} &{" "}
+                              {game.team2.players[1].name}
+                            </span>
+                            {game.score && !isEditing && (
+                              <span className="text-lg font-bold text-gray-900">
+                                {game.score[1]}
+                              </span>
+                            )}
+                          </div>
 
-                              const team1Score = parseInt(team1Input.value);
-                              const team2Score = parseInt(team2Input.value);
-
-                              if (isNaN(team1Score) || isNaN(team2Score)) {
-                                alert("Please enter valid scores");
-                                return;
-                              }
-
-                              if (team1Score === team2Score) {
-                                alert("Scores cannot be equal");
-                                return;
-                              }
-
-                              if (team1Score > 6 || team2Score > 6) {
-                                alert("Scores cannot exceed 6");
-                                return;
-                              }
-
-                              updateScore(currentRound, game.id, [
-                                team1Score,
-                                team2Score,
-                              ]);
-
-                              // Clear the input fields
-                              team1Input.value = "";
-                              team2Input.value = "";
-                            }}
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
-                          >
-                            Save Score
-                          </button>
+                          <div className="text-center text-xs text-gray-500 mt-3">
+                            VS
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+
+                        {(!game.score || isEditing) && (
+                          <div className="bg-gray-100 p-4 rounded-lg">
+                            <div className="flex items-center justify-between mb-3">
+                              <span className="font-medium text-gray-700">
+                                Set Score (0-6):
+                              </span>
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="6"
+                                  placeholder="0"
+                                  className="w-16 p-2 border border-gray-300 rounded text-center"
+                                  value={currentScores[0]}
+                                  onChange={(e) =>
+                                    handleScoreInputChange(
+                                      game.id,
+                                      0,
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                                <span className="font-bold text-gray-700">
+                                  -
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="6"
+                                  placeholder="0"
+                                  className="w-16 p-2 border border-gray-300 rounded text-center"
+                                  value={currentScores[1]}
+                                  onChange={(e) =>
+                                    handleScoreInputChange(
+                                      game.id,
+                                      1,
+                                      e.target.value
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="mb-3 text-sm text-gray-600">
+                              <p>
+                                Points are awarded based on games won and
+                                accumulate across all rounds:
+                              </p>
+                              <p>
+                                • Each player gets points equal to games their
+                                team won
+                              </p>
+                              <p>
+                                • Example: 3-1 score → Winners get 3 pts each,
+                                Losers get 1 pt each
+                              </p>
+                              <p>• These points accumulate across all rounds</p>
+                            </div>
+
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => {
+                                  const score1 = parseInt(currentScores[0]);
+                                  const score2 = parseInt(currentScores[1]);
+
+                                  if (isNaN(score1) || isNaN(score2)) {
+                                    alert("Please enter valid scores");
+                                    return;
+                                  }
+
+                                  updateScore(
+                                    currentRound,
+                                    game.id,
+                                    [score1, score2],
+                                    isEditing
+                                  );
+                                }}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors"
+                              >
+                                {isEditing ? "Update Score" : "Save Score"}
+                              </button>
+
+                              {isEditing && (
+                                <button
+                                  onClick={cancelEditing}
+                                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 rounded-lg transition-colors"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -659,7 +822,10 @@ export default function PadelTournament() {
                         Player
                       </th>
                       <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Points
+                        Games Played
+                      </th>
+                      <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Points
                       </th>
                     </tr>
                   </thead>
@@ -693,10 +859,12 @@ export default function PadelTournament() {
                               </div>
                             </div>
                           </td>
+                          <td className="py-4 px-4 text-center">
+                            {getGamesPlayed(player.id)}
+                          </td>
                           <td className="py-4 px-4">
                             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                              {player.points}
-                              {/* pts */}
+                              {player.points} pts
                             </span>
                           </td>
                         </tr>
