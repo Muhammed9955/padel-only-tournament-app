@@ -78,12 +78,98 @@ export default function PadelTournament() {
     localStorage.setItem("padelTournament", JSON.stringify(data));
   }, [tournamentName, players, rounds, currentRound, courtCount, groups]);
 
+  // Auto-update court count when player names change (only during setup)
+  useEffect(() => {
+    if (activeTab === "setup" && players.length === 0) {
+      const playerCount = playerNames
+        .split("\n")
+        .filter((name) => name.trim() !== "").length;
+      if (playerCount >= 4 && playerCount <= 24) {
+        const minCourts = getMinCourts();
+        const maxCourts = getMaxCourts();
+
+        // Only auto-update if current court count is outside the valid range
+        if (courtCount < minCourts || courtCount > maxCourts) {
+          if (playerCount === 24) {
+            // For 24 players, default to 4 courts but allow user to change
+            setCourtCount(4);
+          } else {
+            // Choose the court count that minimizes waiting players
+            const courtOptions = getCourtOptionsWithInfo();
+            const optimalOption =
+              courtOptions.find((option) => option.waiting === 0) ||
+              courtOptions[0];
+            setCourtCount(optimalOption.courts);
+          }
+        }
+      }
+    }
+  }, [playerNames, activeTab, players.length]);
+
   const getMinCourts = () => {
-    return 1;
+    const playerCount =
+      players.length ||
+      playerNames.split("\n").filter((name) => name.trim() !== "").length;
+    if (playerCount <= 4) return 1;
+    if (playerCount <= 8) return 2;
+    if (playerCount <= 12) return 3;
+    if (playerCount <= 16) return 4;
+    if (playerCount <= 20) return 4;
+    if (playerCount <= 24) return 4;
+    return Math.ceil(playerCount / 4);
   };
 
   const getMaxCourts = () => {
-    return Math.max(1, Math.floor(players.length / 4));
+    const playerCount =
+      players.length ||
+      playerNames.split("\n").filter((name) => name.trim() !== "").length;
+    if (playerCount <= 4) return 1;
+    if (playerCount <= 8) return 2;
+    if (playerCount <= 12) return 3;
+    if (playerCount <= 16) return 4;
+    if (playerCount <= 20) return 5;
+    if (playerCount <= 24) return 6;
+    return Math.min(8, Math.ceil(playerCount / 2));
+  };
+
+  // Helper function to calculate waiting players for a given court count
+  const calculateWaitingPlayers = (playerCount: number, courtCount: number) => {
+    const playersPerCourt = 4;
+    const totalCapacity = courtCount * playersPerCourt;
+    return Math.max(0, playerCount - totalCapacity);
+  };
+
+  // Helper function to get optimal court options with waiting player info
+  const getCourtOptionsWithInfo = () => {
+    const playerCount =
+      players.length ||
+      playerNames.split("\n").filter((name) => name.trim() !== "").length;
+    const min = getMinCourts();
+    const max = getMaxCourts();
+    const options = [];
+
+    for (let i = min; i <= max; i++) {
+      const waiting = calculateWaitingPlayers(playerCount, i);
+      options.push({
+        courts: i,
+        waiting: waiting,
+        games: Math.floor(playerCount / 4),
+      });
+    }
+
+    return options;
+  };
+
+  const getCourtOptions = () => {
+    const min = getMinCourts();
+    const max = getMaxCourts();
+    const options = [];
+
+    for (let i = min; i <= max; i++) {
+      options.push(i);
+    }
+
+    return options;
   };
 
   const getCurrentRoundGames = (): Game[] => {
@@ -94,31 +180,42 @@ export default function PadelTournament() {
 
   const generateRoundRobinRound = (
     playersList: Player[],
-    roundNumber: number
+    roundNumber: number,
+    courtCountToUse?: number
   ): Game[] => {
     // Shuffle players for random pairing
     const shuffledPlayers = [...playersList].sort(() => Math.random() - 0.5);
 
-    // Create teams
+    // Calculate how many players can actually play based on court count
+    const playersPerCourt = 4;
+    const currentCourtCount = courtCountToUse || courtCount;
+    const maxPlayersForCourts = currentCourtCount * playersPerCourt;
+    const playersToUse = Math.min(shuffledPlayers.length, maxPlayersForCourts);
+
+    // Only use the players that can actually play
+    const playingPlayers = shuffledPlayers.slice(0, playersToUse);
+
+    // Create teams from the players that will actually play
     const teams: Team[] = [];
-    for (let i = 0; i < shuffledPlayers.length; i += 2) {
-      if (i + 1 < shuffledPlayers.length) {
+    for (let i = 0; i < playingPlayers.length; i += 2) {
+      if (i + 1 < playingPlayers.length) {
         teams.push({
           id: teams.length + 1,
-          players: [shuffledPlayers[i], shuffledPlayers[i + 1]],
+          players: [playingPlayers[i], playingPlayers[i + 1]],
         });
       }
     }
 
-    // Create games
+    // Create games with proper court assignment
     const games: Game[] = [];
-    const maxCourts = Math.min(courtCount, Math.floor(teams.length / 2));
+    // Use the actual court count chosen by the user
+    const availableCourts = currentCourtCount;
 
     for (let i = 0; i < teams.length; i += 2) {
       if (i + 1 < teams.length) {
         games.push({
           id: roundNumber * 100 + i,
-          court: (games.length % maxCourts) + 1,
+          court: (Math.floor(i / 2) % availableCourts) + 1,
           team1: teams[i],
           team2: teams[i + 1],
           score: null,
@@ -131,8 +228,55 @@ export default function PadelTournament() {
 
   const generateGroupBasedRound = (
     roundNumber: number,
-    groups: Player[][]
+    groups: Player[][],
+    courtCountToUse?: number
   ): Game[] => {
+    const currentCourtCount = courtCountToUse || courtCount;
+    const playersPerCourt = 4;
+    const maxPlayersForCourts = currentCourtCount * playersPerCourt;
+
+    // For 24 players with more than 4 courts, use all players instead of groups
+    if (currentCourtCount > 4) {
+      // Use all 24 players for larger court counts
+      const allPlayers = groups.flat();
+      const shuffledPlayers = [...allPlayers].sort(() => Math.random() - 0.5);
+      const playersToUse = Math.min(
+        shuffledPlayers.length,
+        maxPlayersForCourts
+      );
+      const playingPlayers = shuffledPlayers.slice(0, playersToUse);
+
+      // Create teams from the players that will actually play
+      const teams: Team[] = [];
+      for (let i = 0; i < playingPlayers.length; i += 2) {
+        if (i + 1 < playingPlayers.length) {
+          teams.push({
+            id: teams.length + 1,
+            players: [playingPlayers[i], playingPlayers[i + 1]],
+          });
+        }
+      }
+
+      // Create games with proper court assignment
+      const games: Game[] = [];
+      const availableCourts = currentCourtCount;
+
+      for (let i = 0; i < teams.length; i += 2) {
+        if (i + 1 < teams.length) {
+          games.push({
+            id: roundNumber * 100 + i,
+            court: (Math.floor(i / 2) % availableCourts) + 1,
+            team1: teams[i],
+            team2: teams[i + 1],
+            score: null,
+          });
+        }
+      }
+
+      return games;
+    }
+
+    // Original group-based logic for 4 courts or fewer
     const groupIndex = (roundNumber - 1) % 3;
     let groupIndices: [number, number];
 
@@ -152,24 +296,33 @@ export default function PadelTournament() {
     // Shuffle players for random pairing
     const shuffledPlayers = [...playersInRound].sort(() => Math.random() - 0.5);
 
-    // Create teams from player pairs
+    // Calculate how many players can actually play based on court count
+    const playersToUse = Math.min(shuffledPlayers.length, maxPlayersForCourts);
+
+    // Only use the players that can actually play
+    const playingPlayers = shuffledPlayers.slice(0, playersToUse);
+
+    // Create teams from the players that will actually play
     const teams: Team[] = [];
-    for (let i = 0; i < shuffledPlayers.length; i += 2) {
-      if (i + 1 < shuffledPlayers.length) {
+    for (let i = 0; i < playingPlayers.length; i += 2) {
+      if (i + 1 < playingPlayers.length) {
         teams.push({
           id: teams.length + 1,
-          players: [shuffledPlayers[i], shuffledPlayers[i + 1]],
+          players: [playingPlayers[i], playingPlayers[i + 1]],
         });
       }
     }
 
-    // Create games from team pairs
+    // Create games with proper court assignment
     const games: Game[] = [];
+    // Use the actual court count chosen by the user
+    const availableCourts = currentCourtCount;
+
     for (let i = 0; i < teams.length; i += 2) {
       if (i + 1 < teams.length) {
         games.push({
           id: roundNumber * 100 + i,
-          court: (games.length % courtCount) + 1,
+          court: (Math.floor(i / 2) % availableCourts) + 1,
           team1: teams[i],
           team2: teams[i + 1],
           score: null,
@@ -177,21 +330,35 @@ export default function PadelTournament() {
       }
     }
 
-    // // Create games from team pairs
-    // const games: Game[] = [];
-    // for (i = 0; i < teams.length; i += 2) {
-    //   if (i + 1 < teams.length) {
-    //     games.push({
-    //       id: roundNumber * 100 + i,
-    //       court: (games.length % courtCount) + 1,
-    //       team1: teams[i],
-    //       team2: teams[i + 1],
-    //       score: null,
-    //     });
-    //   }
-    // }
-
     return games;
+  };
+
+  // Add this function to handle court count changes
+  const handleCourtCountChange = (newCourtCount: number) => {
+    setCourtCount(newCourtCount);
+
+    // For 24 players, regenerate all rounds with new court count
+    if (players.length === 24 && rounds.length > 0) {
+      const updatedRounds = rounds.map((round) => {
+        const newGames = generateGroupBasedRound(
+          round.id,
+          groups,
+          newCourtCount
+        );
+        return { ...round, games: newGames };
+      });
+      setRounds(updatedRounds);
+    } else if (rounds.length > 0) {
+      // For other player counts, just update court assignments
+      const updatedRounds = rounds.map((round) => {
+        const updatedGames = round.games.map((game, index) => ({
+          ...game,
+          court: (index % newCourtCount) + 1,
+        }));
+        return { ...round, games: updatedGames };
+      });
+      setRounds(updatedRounds);
+    }
   };
 
   const updateScore = (
@@ -346,14 +513,20 @@ export default function PadelTournament() {
     localStorage.removeItem("padelTournament");
   };
 
-  const generateFirstRound = (playersList: Player[]) => {
-    const games = generateRoundRobinRound(playersList, 1);
+  const generateFirstRound = (
+    playersList: Player[],
+    courtCountToUse?: number
+  ) => {
+    const games = generateRoundRobinRound(playersList, 1, courtCountToUse);
     setRounds([{ id: 1, games }]);
     setCurrentRound(1);
   };
 
-  const generateFirstRoundWithGroups = (groups: Player[][]) => {
-    const games = generateGroupBasedRound(1, groups);
+  const generateFirstRoundWithGroups = (
+    groups: Player[][],
+    courtCountToUse?: number
+  ) => {
+    const games = generateGroupBasedRound(1, groups, courtCountToUse);
     setRounds([{ id: 1, games }]);
     setCurrentRound(1);
   };
@@ -379,8 +552,20 @@ export default function PadelTournament() {
 
     setPlayers(newPlayers);
 
+    // Use the court count that the user has already selected
+    let courtCountToUse: number;
     if (newPlayers.length === 24) {
-      setCourtCount(4);
+      // For 24 players, use the user's selected court count (4, 5, or 6)
+      courtCountToUse = courtCount;
+      // Don't override the user's selection
+    } else {
+      // For other player counts, set to minimum courts required
+      const minCourts = getMinCourts();
+      courtCountToUse = minCourts;
+      setCourtCount(minCourts);
+    }
+
+    if (newPlayers.length === 24) {
       // Create three random groups of 8 players
       const shuffledPlayers = [...newPlayers].sort(() => Math.random() - 0.5);
       const groupSize = 8;
@@ -390,9 +575,9 @@ export default function PadelTournament() {
         shuffledPlayers.slice(groupSize * 2),
       ];
       setGroups(newGroups);
-      generateFirstRoundWithGroups(newGroups);
+      generateFirstRoundWithGroups(newGroups, courtCountToUse);
     } else {
-      generateFirstRound(newPlayers);
+      generateFirstRound(newPlayers, courtCountToUse);
     }
     setActiveTab("games");
   };
@@ -407,9 +592,9 @@ export default function PadelTournament() {
 
     let newGames: Game[];
     if (players.length === 24) {
-      newGames = generateGroupBasedRound(nextRoundId, groups);
+      newGames = generateGroupBasedRound(nextRoundId, groups, courtCount);
     } else {
-      newGames = generateRoundRobinRound(players, nextRoundId);
+      newGames = generateRoundRobinRound(players, nextRoundId, courtCount);
     }
 
     setRounds([...rounds, { id: nextRoundId, games: newGames }]);
@@ -475,6 +660,19 @@ export default function PadelTournament() {
       });
     });
     return count;
+  };
+
+  // Calculate waiting players for current round
+  const getCurrentRoundWaitingPlayers = () => {
+    const games = getCurrentRoundGames();
+    const playingPlayers = new Set<number>();
+
+    games.forEach((game) => {
+      game.team1.players.forEach((player) => playingPlayers.add(player.id));
+      game.team2.players.forEach((player) => playingPlayers.add(player.id));
+    });
+
+    return players.filter((player) => !playingPlayers.has(player.id));
   };
 
   return (
@@ -576,31 +774,54 @@ export default function PadelTournament() {
                 </label>
                 <select
                   value={courtCount}
-                  onChange={(e) => setCourtCount(parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleCourtCountChange(parseInt(e.target.value))
+                  }
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  disabled={players.length === 24}
                 >
-                  {Array.from(
-                    { length: getMaxCourts() - getMinCourts() + 1 },
-                    (_, i) => {
-                      const courtNum = getMinCourts() + i;
-                      return (
-                        <option key={courtNum} value={courtNum}>
-                          {courtNum} court{courtNum > 1 ? "s" : ""}
-                        </option>
-                      );
-                    }
-                  )}
+                  {getCourtOptionsWithInfo().map((option) => (
+                    <option key={option.courts} value={option.courts}>
+                      {option.courts} court{option.courts > 1 ? "s" : ""}
+                      {option.waiting > 0
+                        ? ` (${option.waiting} waiting)`
+                        : " (0 waiting)"}
+                    </option>
+                  ))}
                 </select>
                 <p className="text-sm text-gray-500 mt-1">
                   {players.length === 24
-                    ? "Court count is fixed to 4 for 24 players"
+                    ? "Court count can be 4, 5, or 6 for 24 players"
                     : `Minimum: ${getMinCourts()} court${
                         getMinCourts() > 1 ? "s" : ""
                       }, Maximum: ${getMaxCourts()} court${
                         getMaxCourts() > 1 ? "s" : ""
                       }`}
                 </p>
+                {playerNames.split("\n").filter((name) => name.trim() !== "")
+                  .length > 0 && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    {(() => {
+                      const playerCount = playerNames
+                        .split("\n")
+                        .filter((name) => name.trim() !== "").length;
+                      const waitingPlayers = calculateWaitingPlayers(
+                        playerCount,
+                        courtCount
+                      );
+                      const gamesPerRound = Math.floor(playerCount / 4);
+
+                      if (playerCount < 4) {
+                        return `Need at least 4 players to start a tournament`;
+                      } else if (waitingPlayers > 0) {
+                        return `${waitingPlayers} player${
+                          waitingPlayers > 1 ? "s" : ""
+                        } will wait each round (${gamesPerRound} games per round)`;
+                      } else {
+                        return `Perfect! All ${playerCount} players will play each round (${gamesPerRound} games per round)`;
+                      }
+                    })()}
+                  </p>
+                )}
               </div>
 
               <button
@@ -644,6 +865,19 @@ export default function PadelTournament() {
                   </button>
                 </div>
               </div>
+
+              {getCurrentRoundWaitingPlayers().length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h3 className="font-medium text-yellow-800">
+                    Waiting Players
+                  </h3>
+                  <p className="text-yellow-700">
+                    {getCurrentRoundWaitingPlayers()
+                      .map((p) => p.name)
+                      .join(", ")}
+                  </p>
+                </div>
+              )}
 
               {getCurrentRoundGames().length === 0 ? (
                 <div className="text-center py-8 bg-gray-50 rounded-lg">
@@ -859,14 +1093,6 @@ export default function PadelTournament() {
                             </td>
                             <td className="py-3  whitespace-nowrap">
                               <div className="flex items-center">
-                                {/* <div className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <span className="font-medium text-blue-800 text-xs sm:text-sm">
-                                    {player.name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")}
-                                  </span>
-                                </div> */}
                                 <div className="ml-2 sm:ml-4">
                                   <div className="font-medium text-gray-900 text-sm sm:text-base">
                                     {player.name}
