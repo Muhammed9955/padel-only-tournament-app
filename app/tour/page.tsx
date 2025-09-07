@@ -20,11 +20,11 @@ type Round = { id: number; games: Game[] };
 const partnershipKey = (a: number, b: number) =>
   a < b ? `${a}-${b}` : `${b}-${a}`;
 
-function buildPartnershipMap(rounds: Round[]) {
+function buildPartnershipMap(rounds: Round[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const r of rounds) {
     for (const g of r.games) {
-      const pairs = [
+      const pairs: [number, number][] = [
         [g.team1.players[0].id, g.team1.players[1].id],
         [g.team2.players[0].id, g.team2.players[1].id],
       ];
@@ -77,14 +77,17 @@ function generatePairs(
 function pairsToTeams(
   pairs: [number, number][],
   playersById: Map<number, Player>
-) {
+): Team[] {
   return pairs.map((pair, idx) => ({
     id: idx + 1,
-    players: [playersById.get(pair[0])!, playersById.get(pair[1])!],
+    players: [playersById.get(pair[0])!, playersById.get(pair[1])!] as [
+      Player,
+      Player
+    ], // tuple assertion
   }));
 }
 
-function getGamesPlayed(pid: number, rounds: Round[]) {
+function getGamesPlayed(pid: number, rounds: Round[]): number {
   return rounds.reduce(
     (c, r) =>
       c +
@@ -99,32 +102,44 @@ function getGamesPlayed(pid: number, rounds: Round[]) {
 }
 
 export default function PadelTournamentPage() {
-  const [tournamentName, setTournamentName] = useState("");
-  const [playerNamesText, setPlayerNamesText] = useState("");
+  const [tournamentName, setTournamentName] = useState<string>("");
+  const [playerNamesText, setPlayerNamesText] = useState<string>("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [rounds, setRounds] = useState<Round[]>([]);
-  const [currentRoundId, setCurrentRoundId] = useState(0);
-  const [courtCount, setCourtCount] = useState(4);
+  const [currentRoundId, setCurrentRoundId] = useState<number>(0);
+  const [courtCount, setCourtCount] = useState<number>(4);
   const [activeTab, setActiveTab] = useState<"setup" | "games" | "standings">(
     "setup"
   );
 
+  // Load state
   useEffect(() => {
-    const raw = localStorage.getItem("padel_ui_v4");
+    const raw = localStorage.getItem("padel_ui_v5");
     if (raw) {
-      const data = JSON.parse(raw);
-      setTournamentName(data.tournamentName || "");
-      setPlayers(data.players || []);
-      setRounds(data.rounds || []);
-      setCurrentRoundId(data.currentRoundId || 0);
-      setCourtCount(data.courtCount || 4);
-      if (data.players?.length) setActiveTab("games");
+      try {
+        const data = JSON.parse(raw) as {
+          tournamentName?: string;
+          players?: Player[];
+          rounds?: Round[];
+          currentRoundId?: number;
+          courtCount?: number;
+        };
+        setTournamentName(data.tournamentName || "");
+        setPlayers(data.players || []);
+        setRounds(data.rounds || []);
+        setCurrentRoundId(data.currentRoundId || 0);
+        setCourtCount(data.courtCount || 4);
+        if (data.players && data.players.length) setActiveTab("games");
+      } catch {
+        console.error("Failed to parse saved tournament data");
+      }
     }
   }, []);
 
+  // Save state
   useEffect(() => {
     localStorage.setItem(
-      "padel_ui_v4",
+      "padel_ui_v5",
       JSON.stringify({
         tournamentName,
         players,
@@ -141,38 +156,23 @@ export default function PadelTournamentPage() {
   );
 
   const generateRound = useCallback(
-    (roundNumber: number) => {
+    (roundNumber: number): Game[] => {
       const playersPerCourt = 4;
       const maxPlayersThisRound = courtCount * playersPerCourt;
 
+      let usePlayers: Player[];
       if (players.length <= maxPlayersThisRound) {
-        const usePlayers = [...players];
-        const existing = buildPartnershipMap(rounds);
-        const pairs = generatePairs(usePlayers, existing);
-        const teams = pairsToTeams(pairs, playersById);
-        const games: Game[] = [];
-        for (let i = 0; i < teams.length; i += 2) {
-          if (i + 1 < teams.length) {
-            games.push({
-              id: roundNumber * 1000 + i,
-              court: (Math.floor(i / 2) % courtCount) + 1,
-              team1: teams[i],
-              team2: teams[i + 1],
-              score: null,
-            });
-          }
+        usePlayers = [...players];
+      } else {
+        const rotated = [...players];
+        const offset =
+          ((roundNumber - 1) * maxPlayersThisRound) % players.length;
+        usePlayers = rotated.slice(offset, offset + maxPlayersThisRound);
+        if (usePlayers.length < maxPlayersThisRound) {
+          usePlayers = usePlayers.concat(
+            rotated.slice(0, maxPlayersThisRound - usePlayers.length)
+          );
         }
-        return games;
-      }
-
-      // rotate when too many players
-      const rotated = [...players];
-      const offset = ((roundNumber - 1) * maxPlayersThisRound) % players.length;
-      let usePlayers = rotated.slice(offset, offset + maxPlayersThisRound);
-      if (usePlayers.length < maxPlayersThisRound) {
-        usePlayers = usePlayers.concat(
-          rotated.slice(0, maxPlayersThisRound - usePlayers.length)
-        );
       }
 
       const existing = buildPartnershipMap(rounds);
@@ -197,7 +197,8 @@ export default function PadelTournamentPage() {
   );
 
   const createFirstRound = () => {
-    setRounds([{ id: 1, games: generateRound(1) }]);
+    const first = generateRound(1);
+    setRounds([{ id: 1, games: first }]);
     setCurrentRoundId(1);
   };
 
@@ -228,7 +229,7 @@ export default function PadelTournamentPage() {
       setCurrentRoundId(0);
       setPlayerNamesText("");
       setActiveTab("setup");
-      localStorage.removeItem("padel_ui_v4");
+      localStorage.removeItem("padel_ui_v5");
     }
   };
 
@@ -237,7 +238,11 @@ export default function PadelTournamentPage() {
     gameId: number,
     score: [number, number]
   ) => {
-    if (score[0] === score[1]) return alert("No ties allowed");
+    if (score[0] === score[1]) {
+      alert("No ties allowed");
+      return;
+    }
+
     setRounds((prev) =>
       prev.map((r) =>
         r.id === roundId
@@ -268,7 +273,8 @@ export default function PadelTournamentPage() {
     setPlayers(fresh);
   };
 
-  const currentRound = rounds.find((r) => r.id === currentRoundId) || null;
+  const currentRound: Round | null =
+    rounds.find((r) => r.id === currentRoundId) || null;
   const playerCount = playerNamesText
     .split("\n")
     .map((s) => s.trim())
@@ -306,7 +312,6 @@ export default function PadelTournamentPage() {
           Reset
         </Button>
       </div>
-
       {/* SETUP */}
       {activeTab === "setup" && (
         <Card className="mb-6 shadow-xl border border-blue-100">
