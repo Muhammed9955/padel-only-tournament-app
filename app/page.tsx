@@ -498,7 +498,7 @@ export default function ArabianoTournamentPage() {
                 className="shadow-md border border-gray-200 rounded-xl"
               >
                 <CardHeader>
-                  <CardTitle className="text-lg text-gray-700">
+                  <CardTitle className="text-lg ">
                     Court {g.court}
                   </CardTitle>
                 </CardHeader>
@@ -577,11 +577,11 @@ export default function ArabianoTournamentPage() {
           <CardContent>
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="">
                   <th className="border p-2">Rank</th>
                   <th className="border p-2">Player</th>
-                  <th className="border p-2">Points</th>
                   <th className="border p-2">Games</th>
+                  <th className="border p-2">Points</th>
                 </tr>
               </thead>
               <tbody>
@@ -592,10 +592,10 @@ export default function ArabianoTournamentPage() {
                     <tr key={p.id} className="text-center">
                       <td className="border p-2 font-bold">{idx + 1}</td>
                       <td className="border p-2">{p.name}</td>
-                      <td className="border p-2">{p.points}</td>
                       <td className="border p-2">
                         {getGamesPlayed(p.id, rounds)}
                       </td>
+                      <td className="border p-2">{p.points}</td>
                     </tr>
                   ))}
               </tbody>
