@@ -101,6 +101,20 @@ function getGamesPlayed(pid: number, rounds: Round[]): number {
   );
 }
 
+// ✅ New function: valid court options with waiting players check (0–6)
+function getValidCourts(playersCount: number): number[] {
+  const options: number[] = [];
+  if (playersCount < 4) return options;
+
+  for (let courts = 1; courts <= Math.ceil(playersCount / 4); courts++) {
+    const waiting = playersCount - courts * 4;
+    if (waiting >= 0 && waiting <= 6) {
+      options.push(courts);
+    }
+  }
+  return options;
+}
+
 export default function ArabianoTournamentPage() {
   const [tournamentName, setTournamentName] = useState<string>("Arabiano");
   const [playerNamesText, setPlayerNamesText] = useState<string>("");
@@ -370,9 +384,43 @@ export default function ArabianoTournamentPage() {
                 </span>
               )}
             </div>
+
+            {/* ✅ Court selector with validation */}
+            {playerCount >= 4 && (
+              <div>
+                <label className="block mb-2 font-medium">
+                  Number of courts:
+                </label>
+                <select
+                  value={courtCount}
+                  onChange={(e) => setCourtCount(parseInt(e.target.value))}
+                  className="border rounded p-2 w-full bg-black  "
+                >
+                  <option value="" className="text-white">
+                    -- choose --
+                  </option>
+                  {getValidCourts(playerCount).map((c) => (
+                    <option key={c} value={c} className="text-white">
+                      {c} court{c > 1 ? "s" : ""}
+                    </option>
+                  ))}
+                </select>
+                {courtCount > 0 && (
+                  <p className="mt-2 text-sm text-white">
+                    {playerCount} players → {courtCount * 4} on {courtCount}{" "}
+                    courts, {` `}
+                    <span className="text-yellow-500">
+                      {playerCount - courtCount * 4} waiting
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+
             <Button
               className="bg-black hover:bg-black text-white"
               onClick={addPlayers}
+              disabled={!courtCount}
             >
               Create Tournament
             </Button>
@@ -401,7 +449,9 @@ export default function ArabianoTournamentPage() {
             return waiting.length > 0 ? (
               <div className="p-3 border bg-gray-800 border-gray-300 rounded-md text-sm font-medium">
                 <span className="text-yellow-500">Waiting players:</span>{" "}
-                <span className=""> {waiting.map((p) => p.name).join(" / ")}</span>
+                <span className="">
+                  {waiting.map((p) => p.name).join(" / ")}
+                </span>
               </div>
             ) : null;
           })()}
@@ -520,34 +570,32 @@ export default function ArabianoTournamentPage() {
 
       {/* STANDINGS */}
       {activeTab === "standings" && (
-        <Card className="shadow-lg border border-green-100">
+        <Card className="shadow-md border border-gray-200 rounded-xl">
           <CardHeader>
-            <CardTitle>
-              {tournamentName ? `${tournamentName} - Standings` : "Standings"}
-            </CardTitle>
+            <CardTitle className="text-xl">Standings</CardTitle>
           </CardHeader>
           <CardContent>
             <table className="w-full border-collapse">
-              <thead className="bg-black">
-                <tr>
-                  <th className="p-2 text-left">Rank</th>
-                  <th className="p-2 text-left">Player</th>
-                  <th className="p-2 text-center">Games</th>
-                  <th className="p-2 text-center">Points</th>
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border p-2">Rank</th>
+                  <th className="border p-2">Player</th>
+                  <th className="border p-2">Points</th>
+                  <th className="border p-2">Games</th>
                 </tr>
               </thead>
               <tbody>
                 {players
                   .slice()
                   .sort((a, b) => b.points - a.points)
-                  .map((p, i) => (
-                    <tr key={p.id} className={i % 2 ? "bg-black" : ""}>
-                      <td className={`p-2 font-bold`}>{i + 1}</td>
-                      <td className="p-2">{p.name}</td>
-                      <td className="p-2 text-center">
+                  .map((p, idx) => (
+                    <tr key={p.id} className="text-center">
+                      <td className="border p-2 font-bold">{idx + 1}</td>
+                      <td className="border p-2">{p.name}</td>
+                      <td className="border p-2">{p.points}</td>
+                      <td className="border p-2">
                         {getGamesPlayed(p.id, rounds)}
                       </td>
-                      <td className="p-2 text-center">{p.points}</td>
                     </tr>
                   ))}
               </tbody>
