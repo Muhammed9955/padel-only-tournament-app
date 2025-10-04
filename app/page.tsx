@@ -101,14 +101,14 @@ function getGamesPlayed(pid: number, rounds: Round[]): number {
   );
 }
 
-// ✅ New function: valid court options with waiting players check (0–6)
+// ✅ New function: valid courts with waiting rule (0 ~ courts * 2), max 24 players
 function getValidCourts(playersCount: number): number[] {
   const options: number[] = [];
-  if (playersCount < 4) return options;
+  if (playersCount < 4 || playersCount > 24) return options;
 
   for (let courts = 1; courts <= Math.ceil(playersCount / 4); courts++) {
     const waiting = playersCount - courts * 4;
-    if (waiting >= 0 && waiting <= 6) {
+    if (waiting >= 0 && waiting <= courts * 2) {
       options.push(courts);
     }
   }
@@ -385,8 +385,8 @@ export default function ArabianoTournamentPage() {
               )}
             </div>
 
-            {/* ✅ Court selector with validation */}
-            {playerCount >= 4 && (
+            {/* ✅ Court selector with waiting rule */}
+            {playerCount >= 4 && playerCount <= 24 && (
               <div>
                 <label className="block mb-2 font-medium">
                   Number of courts:
@@ -408,7 +408,7 @@ export default function ArabianoTournamentPage() {
                 {courtCount > 0 && (
                   <p className="mt-2 text-sm text-white">
                     {playerCount} players → {courtCount * 4} on {courtCount}{" "}
-                    courts, {` `}
+                    courts,{" "}
                     <span className="text-yellow-500">
                       {playerCount - courtCount * 4} waiting
                     </span>
@@ -431,7 +431,6 @@ export default function ArabianoTournamentPage() {
       {/* GAMES */}
       {activeTab === "games" && currentRound && (
         <div className="space-y-4">
-          {/* Tournament name */}
           {tournamentName && (
             <h1 className="text-2xl font-bold text-center bg-gradient-to-r from-blue-600 to-green-600 text-transparent bg-clip-text">
               {tournamentName}
@@ -498,9 +497,7 @@ export default function ArabianoTournamentPage() {
                 className="shadow-md border border-gray-200 rounded-xl"
               >
                 <CardHeader>
-                  <CardTitle className="text-lg ">
-                    Court {g.court}
-                  </CardTitle>
+                  <CardTitle className="text-lg ">Court {g.court}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="p-2 rounded bg-black ">
@@ -534,7 +531,7 @@ export default function ArabianoTournamentPage() {
                       }`}
                       onChange={(e) =>
                         updateScore(currentRound.id, g.id, [
-                          parseInt(e.target.value || "0"),
+                          Number(e.target.value),
                           g.score ? g.score[1] : 0,
                         ])
                       }
@@ -556,7 +553,7 @@ export default function ArabianoTournamentPage() {
                       onChange={(e) =>
                         updateScore(currentRound.id, g.id, [
                           g.score ? g.score[0] : 0,
-                          parseInt(e.target.value || "0"),
+                          Number(e.target.value),
                         ])
                       }
                     />
@@ -570,38 +567,34 @@ export default function ArabianoTournamentPage() {
 
       {/* STANDINGS */}
       {activeTab === "standings" && (
-        <Card className="shadow-md border border-gray-200 rounded-xl">
-          <CardHeader>
-            <CardTitle className="text-xl">Standings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="">
-                  <th className="border p-2">Rank</th>
-                  <th className="border p-2">Player</th>
-                  <th className="border p-2">Games</th>
-                  <th className="border p-2">Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players
-                  .slice()
-                  .sort((a, b) => b.points - a.points)
-                  .map((p, idx) => (
-                    <tr key={p.id} className="text-center">
-                      <td className="border p-2 font-bold">{idx + 1}</td>
-                      <td className="border p-2">{p.name}</td>
-                      <td className="border p-2">
-                        {getGamesPlayed(p.id, rounds)}
-                      </td>
-                      <td className="border p-2">{p.points}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+        <div className="overflow-x-auto">
+          <h2 className="text-xl font-semibold mb-4">Standings</h2>
+          <table className="min-w-full bg-black border border-gray-200">
+            <thead>
+              <tr className="bg-black">
+                <th className="py-2 px-4 border">#</th>
+                <th className="py-2 px-4 border">Name</th>
+                <th className="py-2 px-4 border">Points</th>
+                <th className="py-2 px-4 border">Games</th>
+              </tr>
+            </thead>
+            <tbody>
+              {players
+                .slice()
+                .sort((a, b) => b.points - a.points)
+                .map((p, idx) => (
+                  <tr key={p.id}>
+                    <td className="py-2 px-4 border">{idx + 1}</td>
+                    <td className="py-2 px-4 border">{p.name}</td>
+                    <td className="py-2 px-4 border">{p.points}</td>
+                    <td className="py-2 px-4 border">
+                      {getGamesPlayed(p.id, rounds)}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
