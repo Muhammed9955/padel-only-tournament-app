@@ -29,6 +29,13 @@ export const metadata: Metadata = {
         type: "image/png",
         alt: "PadelOnly Tour - Americano & Mexicano Platform",
       },
+      {
+        url: "https://padel-only-tournament-app.vercel.app/og-image-square.png",
+        width: 630,
+        height: 630,
+        type: "image/png",
+        alt: "PadelOnly Tour",
+      },
     ],
     locale: "en_US",
     type: "website",
