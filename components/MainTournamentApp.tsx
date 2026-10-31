@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
+import { usePathname } from "next/navigation";
 import { Header, NavTab } from "@/components/Header";
 import { QuickHub } from "@/components/QuickHub";
 import { TournamentView } from "@/components/TournamentView";
@@ -15,9 +16,8 @@ interface MainTournamentAppProps {
 export const MainTournamentApp: React.FC<MainTournamentAppProps> = ({
   initialTab,
 }) => {
+  const pathname = usePathname();
   const {
-    activeTab,
-    setActiveTab,
     activeTournaments,
     careerLeaderboard,
     tourHistory,
@@ -32,12 +32,15 @@ export const MainTournamentApp: React.FC<MainTournamentAppProps> = ({
     syncToCloud,
   } = useTournamentContext();
 
-  // If a specific route requested an initialTab on direct URL hit
-  useEffect(() => {
-    if (initialTab && activeTab !== initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab, activeTab, setActiveTab]);
+  const activeTab: NavTab =
+    initialTab ??
+    (pathname === "/mexicano"
+      ? "mexicano"
+      : pathname === "/leaderboard"
+      ? "leaderboard"
+      : pathname === "/history"
+      ? "history"
+      : "arabiano");
 
   if (!isLoaded) {
     return (
@@ -54,7 +57,6 @@ export const MainTournamentApp: React.FC<MainTournamentAppProps> = ({
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-white">
       <Header
         activeTab={activeTab}
-        onTabChange={setActiveTab}
         activeCounts={{
           arabiano: !!activeTournaments.arabiano,
           mexicano: !!activeTournaments.mexicano,
@@ -64,7 +66,6 @@ export const MainTournamentApp: React.FC<MainTournamentAppProps> = ({
       <main className="flex-1 container mx-auto px-4 py-6 sm:py-8 space-y-6">
         <QuickHub
           activeTab={activeTab}
-          onTabChange={setActiveTab}
           activeTournaments={activeTournaments}
           leaderboardCount={careerLeaderboard.length}
           historyCount={tourHistory.length}

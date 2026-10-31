@@ -2,13 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { NavTab } from "./Header";
 import { TournamentState } from "@/types/tournament";
 import { Trophy, History } from "lucide-react";
 
 interface QuickHubProps {
-  activeTab: NavTab;
-  onTabChange: (tab: NavTab) => void;
+  activeTab?: NavTab;
+  onTabChange?: (tab: NavTab) => void;
   activeTournaments: {
     arabiano: TournamentState | null;
     mexicano: TournamentState | null;
@@ -18,21 +19,30 @@ interface QuickHubProps {
 }
 
 export const QuickHub: React.FC<QuickHubProps> = ({
-  activeTab,
+  activeTab: propActiveTab,
   onTabChange,
   activeTournaments,
   leaderboardCount,
   historyCount,
 }) => {
+  const pathname = usePathname();
+
+  const activeTab: NavTab =
+    propActiveTab ??
+    (pathname === "/mexicano"
+      ? "mexicano"
+      : pathname === "/leaderboard"
+      ? "leaderboard"
+      : pathname === "/history"
+      ? "history"
+      : "arabiano");
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {/* Card 1: Arabiano Tour */}
       <Link
         href="/"
-        onClick={(e) => {
-          e.preventDefault();
-          onTabChange("arabiano");
-        }}
+        onClick={() => onTabChange?.("arabiano")}
         className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all ${
           activeTab === "arabiano"
             ? "bg-gradient-to-br from-emerald-950/60 to-slate-900 border-emerald-500/60 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/10"
@@ -62,10 +72,7 @@ export const QuickHub: React.FC<QuickHubProps> = ({
       {/* Card 2: Mexicano Style */}
       <Link
         href="/mexicano"
-        onClick={(e) => {
-          e.preventDefault();
-          onTabChange("mexicano");
-        }}
+        onClick={() => onTabChange?.("mexicano")}
         className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all ${
           activeTab === "mexicano"
             ? "bg-gradient-to-br from-amber-950/60 to-slate-900 border-amber-500/60 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/10"
@@ -95,10 +102,7 @@ export const QuickHub: React.FC<QuickHubProps> = ({
       {/* Card 3: Leaderboard */}
       <Link
         href="/leaderboard"
-        onClick={(e) => {
-          e.preventDefault();
-          onTabChange("leaderboard");
-        }}
+        onClick={() => onTabChange?.("leaderboard")}
         className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all ${
           activeTab === "leaderboard"
             ? "bg-gradient-to-br from-cyan-950/60 to-slate-900 border-cyan-500/60 ring-2 ring-cyan-500/30 shadow-lg shadow-cyan-500/10"
@@ -122,10 +126,7 @@ export const QuickHub: React.FC<QuickHubProps> = ({
       {/* Card 4: Tour History */}
       <Link
         href="/history"
-        onClick={(e) => {
-          e.preventDefault();
-          onTabChange("history");
-        }}
+        onClick={() => onTabChange?.("history")}
         className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all ${
           activeTab === "history"
             ? "bg-gradient-to-br from-purple-950/60 to-slate-900 border-purple-500/60 ring-2 ring-purple-500/30 shadow-lg shadow-purple-500/10"

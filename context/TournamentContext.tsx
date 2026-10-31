@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { NavTab } from "@/components/Header";
 import {
   TournamentState,
@@ -114,15 +115,12 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // Seamless tab changer that updates URL smoothly without full page reload
+  const router = useRouter();
+
+  // Seamless tab changer that navigates smoothly with Next.js router
   const setActiveTab = (tab: NavTab) => {
     setActiveTabState(tab);
-    if (typeof window !== "undefined") {
-      const targetUrl = tab === "arabiano" ? "/" : `/${tab}`;
-      if (window.location.pathname !== targetUrl) {
-        window.history.pushState(null, "", targetUrl);
-      }
-    }
+    router.push(tab === "arabiano" ? "/" : `/${tab}`);
   };
 
   const saveTournament = (tour: TournamentState) => {
@@ -149,7 +147,8 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
     setCareerLeaderboard(updatedLeaderboard);
     setTourHistory((prev) => [completedTour, ...prev]);
-    setActiveTab("leaderboard");
+    setActiveTabState("leaderboard");
+    router.push("/leaderboard");
   };
 
   const resetLeaderboard = () => {

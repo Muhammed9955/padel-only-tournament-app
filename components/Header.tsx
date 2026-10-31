@@ -2,13 +2,14 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Trophy, History, Flame } from "lucide-react";
 
 export type NavTab = "arabiano" | "mexicano" | "leaderboard" | "history";
 
 interface HeaderProps {
-  activeTab: NavTab;
-  onTabChange: (tab: NavTab) => void;
+  activeTab?: NavTab;
+  onTabChange?: (tab: NavTab) => void;
   activeCounts?: {
     arabiano: boolean;
     mexicano: boolean;
@@ -16,10 +17,22 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeTab,
+  activeTab: propActiveTab,
   onTabChange,
   activeCounts,
 }) => {
+  const pathname = usePathname();
+
+  const activeTab: NavTab =
+    propActiveTab ??
+    (pathname === "/mexicano"
+      ? "mexicano"
+      : pathname === "/leaderboard"
+      ? "leaderboard"
+      : pathname === "/history"
+      ? "history"
+      : "arabiano");
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-950/80 border-b border-emerald-500/20 shadow-2xl">
       <div className="container mx-auto px-4 py-3 sm:py-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -52,10 +65,7 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className="flex items-center gap-1.5 p-1 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-inner overflow-x-auto max-w-full">
           <Link
             href="/"
-            onClick={(e) => {
-              e.preventDefault();
-              onTabChange("arabiano");
-            }}
+            onClick={() => onTabChange?.("arabiano")}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === "arabiano"
                 ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400/40"
@@ -70,10 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             href="/mexicano"
-            onClick={(e) => {
-              e.preventDefault();
-              onTabChange("mexicano");
-            }}
+            onClick={() => onTabChange?.("mexicano")}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === "mexicano"
                 ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-md shadow-amber-600/30 ring-1 ring-amber-400/40"
@@ -88,10 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             href="/leaderboard"
-            onClick={(e) => {
-              e.preventDefault();
-              onTabChange("leaderboard");
-            }}
+            onClick={() => onTabChange?.("leaderboard")}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === "leaderboard"
                 ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-600/30 ring-1 ring-cyan-400/40"
@@ -104,10 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           <Link
             href="/history"
-            onClick={(e) => {
-              e.preventDefault();
-              onTabChange("history");
-            }}
+            onClick={() => onTabChange?.("history")}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
               activeTab === "history"
                 ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400/40"
