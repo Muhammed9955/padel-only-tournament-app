@@ -15,6 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Arabiano Tour - Padel Tournament Platform",
   description: "Americano and Mexicano padel tournaments with live pairings and career leaderboard.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 import { ThemeProvider } from "next-themes";

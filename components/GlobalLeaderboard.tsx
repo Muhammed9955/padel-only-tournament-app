@@ -476,9 +476,78 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
         </div>
       </div>
 
-      {/* Top 3 Podium Cards */}
+      {/* Mobile Champion Spotlight (Styled exactly like user reference) */}
+      {top1 && (
+        <div className="block md:hidden p-6 rounded-3xl bg-gradient-to-b from-amber-500/15 via-slate-900/90 to-slate-950 border border-amber-500/30 text-center shadow-2xl relative overflow-hidden">
+          {/* Radiant radial warm glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Trophy in glowing circle */}
+          <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-b from-amber-400/20 to-amber-600/10 border border-amber-400/40 shadow-xl shadow-amber-500/20 mb-3">
+            <span className="text-3xl animate-bounce">🏆</span>
+          </div>
+
+          {/* Quote-framed Champion Pill */}
+          <div className="relative flex items-center justify-center gap-2">
+            <span className="text-3xl font-serif text-amber-400/70 font-black select-none">“</span>
+            <Link
+              href={`/player/${encodeURIComponent(top1.name)}`}
+              className="px-4 py-2 rounded-2xl bg-amber-400/20 border-2 border-amber-400/70 shadow-lg shadow-amber-500/20 flex items-center gap-2 text-sm sm:text-base font-black text-amber-300 hover:scale-105 active:scale-95 transition-all"
+            >
+              <span className="text-base">🥇</span>
+              <span>{top1.name}</span>
+            </Link>
+            <span className="text-3xl font-serif text-amber-400/70 font-black select-none">”</span>
+          </div>
+
+          {/* Subtitle */}
+          <p className="relative text-xs font-bold text-slate-300 tracking-wide mt-2">
+            {selectedMonth === "all" ? "Tournament Champion (All-Time)" : `${formatMonthLabel(selectedMonth).replace(/[🔥🗓️]/g, "").trim()} Champion`}
+          </p>
+
+          {/* Leader Quick Highlights */}
+          <div className="relative mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-center gap-3 text-xs font-bold text-slate-400">
+            <span className="text-amber-300 font-black">{top1.displayPoints} pts</span>
+            <span>•</span>
+            <span>{top1.displayTours} tours</span>
+            <span>•</span>
+            <span className="text-emerald-400">{top1.winRate}% win rate</span>
+            {top1.displayChampionships > 0 && (
+              <>
+                <span>•</span>
+                <span className="text-amber-400">🏆 {top1.displayChampionships} titles</span>
+              </>
+            )}
+          </div>
+
+          {/* Runner-ups */}
+          {top2 && (
+            <div className="relative mt-3 pt-2 flex items-center justify-center gap-3 text-[11px] text-slate-400">
+              <span className="flex items-center gap-1 font-medium">
+                <span>🥈</span>
+                <Link href={`/player/${encodeURIComponent(top2.name)}`} className="text-slate-300 hover:text-white">
+                  {top2.name} ({top2.displayPoints} pts)
+                </Link>
+              </span>
+              {top3 && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 font-medium">
+                    <span>🥉</span>
+                    <Link href={`/player/${encodeURIComponent(top3.name)}`} className="text-slate-300 hover:text-white">
+                      {top3.name} ({top3.displayPoints} pts)
+                    </Link>
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Desktop Top 3 Podium Cards */}
       {processedPlayers.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="hidden md:grid md:grid-cols-3 gap-4 items-end">
           {/* 🥈 #2 Silver Medal */}
           <div className="order-2 md:order-1 p-5 rounded-3xl bg-slate-900/90 border border-slate-700/60 shadow-xl relative overflow-hidden group hover:border-slate-500 transition-all">
             <div className="absolute top-0 right-0 w-24 h-24 bg-slate-400/5 rounded-full blur-2xl pointer-events-none" />
@@ -667,7 +736,161 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
         </CardHeader>
 
         {/* Data Table */}
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
+          {/* Mobile Table View (Block on mobile, hidden on desktop) - Styled matching user screenshot */}
+          <div className="block md:hidden">
+            {processedPlayers.length === 0 ? (
+              <div className="p-8 text-center space-y-2">
+                <span className="text-3xl">🎾</span>
+                <p className="text-sm font-bold text-white">No players found</p>
+                <p className="text-xs text-slate-500">
+                  {searchQuery
+                    ? `No matching players for "${searchQuery}"`
+                    : "No tournaments recorded in this season yet."}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-800/60">
+                {/* Column Headers matching screenshot */}
+                <div className="grid grid-cols-12 px-3 py-2.5 bg-slate-950/90 text-[10px] font-bold text-slate-400 uppercase tracking-wider items-center border-b border-slate-800/80">
+                  <div className="col-span-5 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort("points")}
+                      className="hover:text-white transition-colors flex items-center gap-1 font-bold text-[10px]"
+                    >
+                      <span className="text-xs">👁️</span>
+                      <span>Player</span>
+                    </button>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort("won")}
+                      className={`hover:text-white transition-colors font-bold text-[10px] ${
+                        sortField === "won" ? "text-emerald-400 font-black" : ""
+                      }`}
+                    >
+                      W-L
+                    </button>
+                  </div>
+                  <div className="col-span-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort("tours")}
+                      className={`hover:text-white transition-colors font-bold text-[10px] ${
+                        sortField === "tours" ? "text-cyan-400 font-black" : ""
+                      }`}
+                    >
+                      Tours
+                    </button>
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort("winRate")}
+                      className={`hover:text-white transition-colors font-bold text-[10px] ${
+                        sortField === "winRate" ? "text-emerald-400 font-black" : ""
+                      }`}
+                    >
+                      Win%
+                    </button>
+                  </div>
+                  <div className="col-span-2 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSort("points")}
+                      className={`hover:text-white transition-colors font-bold text-[10px] pr-1 ${
+                        sortField === "points" ? "text-cyan-400 font-black" : ""
+                      }`}
+                    >
+                      P
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mobile Rows */}
+                {processedPlayers.map((player, idx) => {
+                  const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+                  return (
+                    <div
+                      key={player.name}
+                      onClick={() => setSelectedPlayer(player)}
+                      className={`grid grid-cols-12 px-3 py-3 items-center text-xs transition-colors cursor-pointer hover:bg-slate-800/40 ${
+                        idx === 0
+                          ? "bg-amber-500/10 font-semibold"
+                          : idx === 1
+                          ? "bg-slate-300/5 font-semibold"
+                          : idx === 2
+                          ? "bg-amber-700/5 font-semibold"
+                          : idx % 2 === 1
+                          ? "bg-slate-950/40"
+                          : ""
+                      }`}
+                    >
+                      {/* Player Col: Rank + Name + Medal + Subtitle */}
+                      <div className="col-span-5 min-w-0 pr-1">
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[11px] font-black shrink-0 ${
+                              idx < 3 ? "text-amber-400" : "text-slate-400"
+                            }`}
+                          >
+                            {idx + 1}.
+                          </span>
+                          <Link
+                            href={`/player/${encodeURIComponent(player.name)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-bold text-white hover:text-cyan-300 truncate transition-colors inline-flex items-center gap-1"
+                          >
+                            <span className="truncate">{player.name}</span>
+                            {medal && <span className="shrink-0 text-xs">{medal}</span>}
+                          </Link>
+                        </div>
+                        {/* Secondary stats row: titles / avg / format */}
+                        <div className="text-[10px] text-slate-400 pl-4 mt-0.5 truncate flex items-center gap-1 font-medium">
+                          {player.displayChampionships > 0 && (
+                            <span className="text-amber-400 font-bold">
+                              🏆 {player.displayChampionships}
+                            </span>
+                          )}
+                          {player.displayChampionships > 0 && <span>•</span>}
+                          <span>{player.avgPoints} avg</span>
+                        </div>
+                      </div>
+
+                      {/* W-L Record */}
+                      <div className="col-span-2 text-center text-[11px] font-semibold text-slate-300">
+                        <span className="text-emerald-400 font-bold">{player.displayWon}</span>
+                        <span className="text-slate-500">-</span>
+                        <span className="text-rose-400 font-bold">{player.displayLost}</span>
+                      </div>
+
+                      {/* Tours Count */}
+                      <div className="col-span-2 text-center text-[11px] font-bold text-slate-300">
+                        {player.displayTours}
+                      </div>
+
+                      {/* Win% */}
+                      <div className="col-span-1 text-center text-[11px] font-semibold text-slate-400">
+                        {player.winRate}%
+                      </div>
+
+                      {/* Total Points (P) - Prominent bold blue/cyan styled number just like screenshot */}
+                      <div className="col-span-2 text-right pr-1">
+                        <span className="text-sm font-black text-cyan-400 tracking-tight">
+                          {player.displayPoints}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View (Hidden on mobile, block on md+) */}
+          <div className="hidden md:block overflow-x-auto">
           {processedPlayers.length === 0 ? (
             <div className="p-12 text-center space-y-2">
               <span className="text-3xl">🎾</span>
@@ -964,6 +1187,7 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
               </tbody>
             </table>
           )}
+          </div>
         </CardContent>
       </Card>
 
