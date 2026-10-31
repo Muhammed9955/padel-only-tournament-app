@@ -23,9 +23,10 @@ export const metadata: Metadata = {
     siteName: "PadelOnly Tour",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://padel-only-tournament-app.vercel.app/og-image.png",
         width: 1200,
         height: 630,
+        type: "image/png",
         alt: "PadelOnly Tour - Americano & Mexicano Platform",
       },
     ],

@@ -70,7 +70,7 @@ export default function PlayerProfilePage() {
 
   const handleShareWhatsApp = () => {
     if (!player) return;
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    const url = typeof window !== "undefined" ? `${window.location.href}?v=1` : "";
     const text = `🎾 PadelOnly Tour Player Profile: ${player.name}\n🏆 Career Rank #${rank} • ${player.totalPoints} Total Points\n🥇 ${player.championships} Championship(s) • ${player.toursPlayed} Tour(s) Played\n\nView profile & match history: ${url}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, "_blank");

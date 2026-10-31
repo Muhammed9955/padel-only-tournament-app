@@ -244,7 +244,7 @@ export const GlobalLeaderboard: React.FC<GlobalLeaderboardProps> = ({
           `${i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"} #${i + 1} ${p.name}: ${p.displayPoints} pts (${p.displayTours} tours)`
       )
       .join("\n");
-    const url = typeof window !== "undefined" ? `${window.location.origin}/leaderboard` : "";
+    const url = typeof window !== "undefined" ? `${window.location.origin}/leaderboard?v=1` : "";
     const msg = `🏆 *Arabiano Padel Leaderboard (${periodName})* 🏆\n\n${top3}\n\n👉 View complete standings & player profiles:\n${url}`;
     const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(waUrl, "_blank");
